@@ -1,9 +1,2 @@
 venv/
-.venv/
 paper/
-# Kaggle dataset cache
-.cache/
-datasets/
-checkpoints/
-mlruns/
-mlflow/
