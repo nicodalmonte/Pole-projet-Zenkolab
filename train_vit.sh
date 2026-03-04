@@ -38,6 +38,6 @@ python -u src/train.py \
     --patience     7              \
     --freeze_epochs 3             \
     --mlflow                      \
-    --mlflow_exp   retfound-vs-vit
+    --mlflow_exp   retfound-vs-vit-new-head-1-hidden-layer
 
 echo "End time : $(date)"
