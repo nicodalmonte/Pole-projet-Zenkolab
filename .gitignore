@@ -1,2 +1,148 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
 venv/
+ENV/
+env/
+.venv
+env.bak/
+venv.bak/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.vim/
+.emacs.desktop*
+
+# Jupyter & Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing & Coverage
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ML/Deep Learning Models & Weights
+*.pth
+*.pt
+*.ckpt
+checkpoint/
+checkpoints/
+pretrained/
+weights/
+*.h5
+*.pb
+*.onnx
+runs/
+logs/
+tb_logs/
+lightning_logs/
+
+# Data Files & Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.csv
+*.xlsx
+*.xls
+output/
+results/
+predictions/
+*.pkl
+*.pickle
+*.joblib
+data
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+secrets/
+credentials/
+
+# Build & Distribution
+*.o
+*.a
+*.dylib
+*.dll
+*.exe
+
+# Documentation
+site/
+docs/_build/
+
+# Type Checking & Linting
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.ruff_cache/
+.pylint_cache/
+
+# Logs & Debug
+*.log
+debug.log
+npm-debug.log*
+
+# Documentation & Papers
 paper/
+papers/
+
+# Miscellaneous
+.cache/
+*.bak
+*~
+*.swp
+.pytest_cache/
