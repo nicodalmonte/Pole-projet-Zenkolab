@@ -1,0 +1,117 @@
+======================================================
+  Model      : RETFound MAE (retinal pretrained)
+  Job ID     : 503
+  Node       : dgx-a100
+  GPU(s)     : MIG-bff49a7d-53d6-5d80-a43b-40a91aacb93a
+  Start time : Tue Mar  3 22:11:25 CET 2026
+======================================================
+[train] Device: cuda
+[dataset] MultiDirDataset (train): 5926 total — glaucoma=2011, normal=3915
+          GlaucomaDataset(split=train, total=3063, glaucoma=1081, normal=1982, src=train)
+          GlaucomaDataset(split=train, total=990, glaucoma=234, normal=756, src=test)
+          FolderGlaucomaDataset(split=train, total=520, glaucoma=134, normal=386, src=Train)
+          GlaucomaDataset(split=train, total=703, glaucoma=394, normal=309, src=ACRIMA)
+          CSVGlaucomaDataset(split=train, total=650, glaucoma=168, normal=482, src=ORIGA)
+[dataset] MultiDirDataset (validation): 931 total — glaucoma=430, normal=501
+          GlaucomaDataset(split=validation, total=801, glaucoma=396, normal=405, src=validation)
+          FolderGlaucomaDataset(split=validation, total=130, glaucoma=34, normal=96, src=Validation)
+[train] Test samples (REFUGE2): GlaucomaDataset(split=test, total=400, glaucoma=40, normal=360, src=train)
+[model] Loading RETFound MAE (retinal pretrained) from HuggingFace …
+[model] Total params: 303.3M │ Trainable: 0.0M
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:184: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler    = GradScaler() if device.type == "cuda" else None
+2026/03/03 22:11:50 INFO mlflow.store.db.utils: Creating initial MLflow database tables...
+Traceback (most recent call last):
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.OperationalError: table experiments already exists
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py", line 313, in <module>
+    main()
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py", line 192, in main
+    mlflow.set_experiment(args.mlflow_exp)   # crée l'expérience si elle n'existe pas
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/fluent.py", line 190, in set_experiment
+    client = TrackingServiceClient(_resolve_tracking_uri())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/_tracking_service/client.py", line 99, in __init__
+    self.store
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/_tracking_service/client.py", line 103, in store
+    return utils._get_store(self.tracking_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/_tracking_service/utils.py", line 270, in _get_store
+    return _tracking_store_registry.get_store(store_uri, artifact_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/_tracking_service/registry.py", line 45, in get_store
+    return self._get_store_with_resolved_uri(resolved_store_uri, artifact_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/_tracking_service/registry.py", line 56, in _get_store_with_resolved_uri
+    return builder(store_uri=resolved_store_uri, artifact_uri=artifact_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/tracking/_tracking_service/utils.py", line 201, in _get_sqlalchemy_store
+    return store_cls(store_uri, artifact_uri)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/store/tracking/sqlalchemy_store.py", line 299, in __init__
+    mlflow.store.db.utils._initialize_tables(self.engine)
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/mlflow/store/db/utils.py", line 120, in _initialize_tables
+    InitialBase.metadata.create_all(engine)
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 5928, in create_all
+    bind._run_ddl_visitor(
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3268, in _run_ddl_visitor
+    conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2467, in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/visitors.py", line 661, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 984, in visit_metadata
+    self.traverse_single(
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/visitors.py", line 661, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 1022, in visit_table
+    )._invoke_with(self.connection)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 321, in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 187, in _execute_on_connection
+    return connection._execute_ddl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1530, in _execute_ddl
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table experiments already exists
+[SQL: 
+CREATE TABLE experiments (
+	experiment_id INTEGER NOT NULL, 
+	name VARCHAR(256) NOT NULL, 
+	artifact_location VARCHAR(256), 
+	lifecycle_stage VARCHAR(32), 
+	CONSTRAINT experiment_pk PRIMARY KEY (experiment_id), 
+	CONSTRAINT experiments_lifecycle_stage CHECK (lifecycle_stage IN ('active', 'deleted')), 
+	UNIQUE (name)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

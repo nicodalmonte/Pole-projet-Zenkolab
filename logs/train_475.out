@@ -1,0 +1,61 @@
+======================================================
+  Job ID     : 475
+  Node       : dgx-a100
+  GPU(s)     : MIG-1dffd88e-2c6f-5142-b2b2-1bceda9a9734
+  Python     : Python 3.11.14
+  Start time : Mon Mar  2 16:59:27 CET 2026
+======================================================
+[train] Device: cuda
+[train] Train samples: 3063 | Val samples: 801
+[model] Downloading RETFound CFP weights from HuggingFace …
+Traceback (most recent call last):
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 720, in hf_raise_for_status
+    response.raise_for_status()
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '401 Unauthorized' for url 'https://huggingface.co/rmaphoh/RETFound_cfp/resolve/main/RETFound_cfp_weights.pth'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py", line 242, in <module>
+    main()
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py", line 159, in main
+    model = build_retfound(num_classes=2, freeze_backbone=True).to(device)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/model.py", line 111, in build_retfound
+    weights_path = _download_retfound_weights(CHECKPOINT_DIR)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/model.py", line 36, in _download_retfound_weights
+    path = hf_hub_download(
+           ^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 961, in hf_hub_download
+    return _hf_hub_download_to_local_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1324, in _hf_hub_download_to_local_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1762, in _raise_on_head_call_error
+    raise head_call_error
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1649, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/file_download.py", line 1572, in get_hf_file_metadata
+    response = _httpx_follow_relative_redirects_with_backoff(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 651, in _httpx_follow_relative_redirects_with_backoff
+    hf_raise_for_status(response)
+  File "/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/.venv/lib/python3.11/site-packages/huggingface_hub/utils/_http.py", line 788, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-69a5b3f1-462fc2ab1ccfcf196e879aa1;e00d50f9-82d8-49ad-8b80-90463525d573)
+
+Repository Not Found for url: https://huggingface.co/rmaphoh/RETFound_cfp/resolve/main/RETFound_cfp_weights.pth.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Invalid username or password.

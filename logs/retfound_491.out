@@ -1,0 +1,140 @@
+======================================================
+  Model      : RETFound MAE (retinal pretrained)
+  Job ID     : 491
+  Node       : dgx-a100
+  GPU(s)     : MIG-1dffd88e-2c6f-5142-b2b2-1bceda9a9734
+  Start time : Tue Mar  3 09:10:03 CET 2026
+======================================================
+[train] Device: cuda
+[dataset] MultiDirDataset (train): 4053 total samples from 2 dirs
+          GlaucomaDataset(split=train, total=3063, glaucoma=1081, normal=1982)
+          GlaucomaDataset(split=train, total=990, glaucoma=234, normal=756)
+[train] Val  samples: GlaucomaDataset(split=validation, total=801, glaucoma=396, normal=405)
+[train] Test samples (REFUGE2): GlaucomaDataset(split=test, total=400, glaucoma=40, normal=360)
+[model] Loading RETFound MAE (retinal pretrained) from HuggingFace …
+Unexpected keys (norm.weight, norm.bias) found while loading pretrained weights. This may be expected if model is being adapted.
+[model] Total params: 303.3M │ Trainable: 0.0M
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:180: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler    = GradScaler() if device.type == "cuda" else None
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 001/30 | Train loss=0.6184 auc=0.7187 acc=0.6825 | Val   loss=0.5724  auc=0.8496  acc=0.6916 | 26.4s
+  ✓ Saved best model (val AUC=0.8496) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 002/30 | Train loss=0.4777 auc=0.8774 acc=0.7923 | Val   loss=0.4887  auc=0.8858  acc=0.7715 | 25.4s
+  ✓ Saved best model (val AUC=0.8858) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 003/30 | Train loss=0.4210 auc=0.9025 acc=0.8273 | Val   loss=0.4825  auc=0.9072  acc=0.7541 | 25.5s
+  ✓ Saved best model (val AUC=0.9072) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+[train] Unfreezing backbone …
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 004/30 | Train loss=0.2298 auc=0.9681 acc=0.9144 | Val   loss=0.1628  auc=0.9882  acc=0.9338 | 49.1s
+  ✓ Saved best model (val AUC=0.9882) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 005/30 | Train loss=0.1131 auc=0.9916 acc=0.9645 | Val   loss=0.1047  auc=0.9945  acc=0.9650 | 48.9s
+  ✓ Saved best model (val AUC=0.9945) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 006/30 | Train loss=0.0952 auc=0.9941 acc=0.9694 | Val   loss=0.2076  auc=0.9906  acc=0.9226 | 48.9s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 007/30 | Train loss=0.0753 auc=0.9960 acc=0.9771 | Val   loss=0.0792  auc=0.9965  acc=0.9725 | 48.9s
+  ✓ Saved best model (val AUC=0.9965) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 008/30 | Train loss=0.0630 auc=0.9974 acc=0.9815 | Val   loss=0.0678  auc=0.9969  acc=0.9738 | 48.8s
+  ✓ Saved best model (val AUC=0.9969) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 009/30 | Train loss=0.0554 auc=0.9979 acc=0.9835 | Val   loss=0.0927  auc=0.9965  acc=0.9725 | 48.6s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 010/30 | Train loss=0.0472 auc=0.9987 acc=0.9867 | Val   loss=0.1043  auc=0.9962  acc=0.9588 | 48.7s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 011/30 | Train loss=0.0328 auc=0.9994 acc=0.9921 | Val   loss=0.0691  auc=0.9974  acc=0.9725 | 48.5s
+  ✓ Saved best model (val AUC=0.9974) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 012/30 | Train loss=0.0325 auc=0.9994 acc=0.9914 | Val   loss=0.1166  auc=0.9952  acc=0.9663 | 48.4s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 013/30 | Train loss=0.0290 auc=0.9990 acc=0.9943 | Val   loss=0.0948  auc=0.9947  acc=0.9650 | 48.6s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 014/30 | Train loss=0.0302 auc=0.9993 acc=0.9931 | Val   loss=0.0525  auc=0.9985  acc=0.9838 | 48.5s
+  ✓ Saved best model (val AUC=0.9985) → /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/checkpoints/best_retfound.pth
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 015/30 | Train loss=0.0241 auc=0.9996 acc=0.9943 | Val   loss=0.0736  auc=0.9961  acc=0.9775 | 48.6s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 016/30 | Train loss=0.0176 auc=0.9998 acc=0.9951 | Val   loss=0.0681  auc=0.9971  acc=0.9813 | 48.5s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 017/30 | Train loss=0.0157 auc=0.9998 acc=0.9965 | Val   loss=0.0820  auc=0.9958  acc=0.9738 | 48.4s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 018/30 | Train loss=0.0122 auc=0.9999 acc=0.9956 | Val   loss=0.0607  auc=0.9979  acc=0.9775 | 48.6s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 019/30 | Train loss=0.0105 auc=0.9999 acc=0.9973 | Val   loss=0.1061  auc=0.9953  acc=0.9700 | 48.1s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 020/30 | Train loss=0.0094 auc=1.0000 acc=0.9961 | Val   loss=0.0780  auc=0.9961  acc=0.9763 | 48.5s
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/src/train.py:101: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=scaler is not None):
+Epoch 021/30 | Train loss=0.0042 auc=1.0000 acc=0.9985 | Val   loss=0.0969  auc=0.9961  acc=0.9763 | 48.5s
+[train] Early stopping at epoch 21 (no improvement for 7 epochs)
+
+[train] Done! Best validation AUC: 0.9985
+
+[train] Running final evaluation on REFUGE2 test set …
+[REFUGE2 test] AUC=0.8843 | Acc=0.6200 | Sensitivity=0.9000 | Specificity=0.5889
+End time : Tue Mar  3 09:27:04 CET 2026
