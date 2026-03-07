@@ -1,2 +1,38 @@
 venv/
+.venv/
 paper/
+# Virtual environment
+.venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# uv
+.uv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dati e modelli (spesso pesanti)
+*.csv
+*.parquet
+*.pt
+*.ckpt
+*.bin
+data/
+models/
+
+# Env e segreti
+.env
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
