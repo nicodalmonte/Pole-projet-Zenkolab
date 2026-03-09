@@ -52,7 +52,52 @@ def explore(root: Path):
 
     print(f"\nEstensioni trovate: {dict(extensions)}")
     print(f"Totale immagini:    {sum(class_counts.values())}")
+import pandas as pd
+
+def explore_labels(root: Path):
+    print(f"\n{'='*50}")
+    print("Cercando file di etichette...")
+    print(f"{'='*50}")
+
+    # Cerca tutti i file non-immagine
+    for dirpath, _, filenames in os.walk(root):
+        for f in filenames:
+            if not f.lower().endswith((".jpg", ".jpeg", ".png")):
+                full = Path(dirpath) / f
+                print(f"  Trovato: {full}")
+
+                # Se è un CSV, stampane le prime righe
+                if f.endswith(".csv"):
+                    df = pd.read_csv(full)
+                    print(f"  Shape: {df.shape}")
+                    print(f"  Colonne: {list(df.columns)}")
+                    print(df.head())
+def explore_filenames(root: Path):
+    print(f"\n{'='*50}")
+    print("Analisi nomi file:")
+    print(f"{'='*50}")
+
+    for split in ["train", "validation", "test"]:
+        split_path = root / "LAG" / split
+        if not split_path.exists():
+            continue
+
+        files = list(split_path.glob("*.jpg"))
+        prefixes = defaultdict(int)
+
+        for f in files:
+            # Prende il prefisso prima del punto
+            # es. "g.0005.jpg" → "g"
+            # es. "n.0005.jpg" → "n"
+            prefix = f.stem.split(".")[0]
+            prefixes[prefix] += 1
+
+        print(f"\n  {split}/")
+        for prefix, count in sorted(prefixes.items()):
+            print(f"    prefisso '{prefix}' → {count} immagini")
 
 if __name__ == "__main__":
     root = download_dataset()
     explore(root)
+    explore_labels(root)
+    explore_filenames(root)
