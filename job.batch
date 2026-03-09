@@ -24,12 +24,10 @@
 # Setup
 # ---------------------------------------------------------------------------
 
-set -e
-
-PROJECT=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab
+PROJECT=/raid/home/students/damon_mat/P-le-Projet-Zenkolab
 
 # Activate virtual environment
-source "$PROJECT/.venv/bin/activate"
+#I use uv
 
 # Move to project root so relative paths (datasets/, checkpoints/) work
 cd "$PROJECT"
@@ -46,4 +44,4 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-uv run dino_train.py 
+uv run src/train/dino_train.py 
