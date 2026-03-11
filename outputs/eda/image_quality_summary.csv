@@ -1,0 +1,17 @@
+dataset,split,quality_tier,count
+ACRIMA,all,warning,172
+ACRIMA,all,poor,533
+FUNDUS_SORTED,Train,warning,518
+FUNDUS_SORTED,Train,poor,2
+FUNDUS_SORTED,Validation,warning,124
+FUNDUS_SORTED,Validation,poor,6
+ORIGA,A,warning,321
+ORIGA,A,poor,4
+ORIGA,B,warning,321
+ORIGA,B,poor,4
+REFUGE2,test,warning,399
+REFUGE2,test,poor,1
+REFUGE2,train,warning,108
+REFUGE2,train,poor,292
+REFUGE2,val,warning,293
+REFUGE2,val,poor,107
