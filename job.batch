@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-#SBATCH --job-name=retfound_glaucoma
+#SBATCH --job-name=dino_v3
 #SBATCH --output=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
-#SBATCH --error=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.err
+#SBATCH --error=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
 #SBATCH --partition=prod40
@@ -44,4 +44,4 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-uv run src/train/train_dino.py 
+uv run src/train/train.py 

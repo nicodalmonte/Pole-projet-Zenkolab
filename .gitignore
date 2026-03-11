@@ -94,6 +94,7 @@ predictions/
 *.pickle
 *.joblib
 data
+job.batch
 
 # OS Files
 .DS_Store

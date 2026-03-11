@@ -1,63 +1,77 @@
-import torch
-from torch.utils.data import Dataset
+"""LAG Dataset for glaucoma classification."""
+
+from __future__ import annotations
+
 from pathlib import Path
-import cv2
+
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
 
 
 class LAGDataset(Dataset):
-    """
-    LAG dataset where labels are encoded in filename prefixes.
+    """LAG (Large Always Glaucoma?) dataset for glaucoma classification.
 
-    Filename conventions:
-    - g.*   -> glaucoma (1)
-    - ng.*  -> non-glaucoma (0)
+    The dataset is organized with train/, validation/, and test/ folders.
+    Within each folder, images are prefixed with 'g.' (glaucoma) or 'ng.' (non-glaucoma).
+
+    Args:
+        data_dir: Path to the root data directory containing LAG folder.
+        split: Dataset split, one of "train", "validation", or "test".
+        transforms: Optional torchvision transforms to apply to images.
     """
 
     def __init__(
         self,
-        data_dir: str = "data/datasets",
+        data_dir: str | Path = "data/datasets",
         split: str = "train",
         transforms=None,
-    ):
+    ) -> None:
         self.data_dir = Path(data_dir) / "LAG"
         self.transforms = transforms
 
-        split_key = split.lower()
-        split_map = {
-            "train": "train",
-            "val": "validation",
-            "validation": "validation",
-            "test": "test",
-        }
-        if split_key not in split_map:
-            raise ValueError("split must be one of: train, val, validation, test")
+        # Normalize split name
+        split_lower = split.lower()
+        if split_lower == "train":
+            self.split_dir = self.data_dir / "train"
+        elif split_lower in ("val", "validation"):
+            self.split_dir = self.data_dir / "validation"
+        elif split_lower == "test":
+            self.split_dir = self.data_dir / "test"
+        else:
+            raise ValueError(
+                f"Invalid split: {split}. Must be 'train', 'validation', or 'test'."
+            )
 
-        split_dir = self.data_dir / split_map[split_key]
-        self.image_paths = sorted(split_dir.glob("*.jpg")) + sorted(split_dir.glob("*.JPG"))
+        if not self.split_dir.exists():
+            raise FileNotFoundError(f"Split directory not found: {self.split_dir}")
+
+        # Collect all images and assign labels based on prefix
+        self.image_paths = []
+
+        for ext in ("*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"):
+            self.image_paths.extend(sorted(self.split_dir.glob(ext)))
 
         if not self.image_paths:
-            raise FileNotFoundError(f"No images found in {split_dir}")
+            raise FileNotFoundError(f"No images found in {self.split_dir}")
 
     def __len__(self) -> int:
         return len(self.image_paths)
 
     def __getitem__(self, idx: int) -> dict:
         image_path = self.image_paths[idx]
-        image = cv2.imread(str(image_path))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        stem = image_path.stem.lower()
-        if stem.startswith("g."):
-            label = 1
-        elif stem.startswith("ng."):
-            label = 0
-        else:
-            raise ValueError(f"Unexpected filename format for label inference: {image_path.name}")
+        # Label is determined by prefix: "g." = glaucoma (1), "ng." = non-glaucoma (0)
+        filename = image_path.name
+        label = 1 if filename.startswith("g.") else 0
 
-        if self.transforms:
+        image = Image.open(image_path).convert("RGB")
+
+        if self.transforms is not None:
             image = self.transforms(image)
         else:
-            image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+            image = np.array(image)
 
         return {
             "image": image,

@@ -1,93 +1,83 @@
+"""ORIGA Dataset for glaucoma classification."""
+
+from __future__ import annotations
+
 import csv
 from pathlib import Path
 
-import cv2
+import numpy as np
 import torch
+from PIL import Image
 from torch.utils.data import Dataset
 
 
 class ORIGADataset(Dataset):
-    """
-    ORIGA dataset wrapper using labels from glaucoma.csv.
+    """ORIGA (ORIGA-light?) dataset for glaucoma classification.
 
-    Split strategy from CSV column 'Set':
-    - train -> Set A
-    - val/test -> Set B
-    - all -> all samples
+    The dataset uses a CSV file (glaucoma.csv) to provide labels for images.
+    Images are located in the ORIGA/Images/ folder.
+
+    Args:
+        data_dir: Path to the root data directory containing ORIGA folder.
+        split: Dataset split. ORIGA doesn't have explicit splits; this parameter is ignored
+            but kept for API consistency. Can filter based on 'Set' column in CSV if needed.
+        transforms: Optional torchvision transforms to apply to images.
     """
 
     def __init__(
         self,
-        data_dir: str = "data/datasets",
+        data_dir: str | Path = "data/datasets",
         split: str = "train",
         transforms=None,
-    ):
+    ) -> None:
         self.data_dir = Path(data_dir) / "ORIGA"
+        self.image_dir = self.data_dir / "ORIGA" / "Images"
+        self.csv_file = self.data_dir / "glaucoma.csv"
         self.transforms = transforms
 
-        csv_path = self.data_dir / "glaucoma.csv"
-        image_dir = self.data_dir / "ORIGA" / "Images"
-        ann_dir = self.data_dir / "ORIGA" / "Semi-automatic-annotations"
+        if not self.image_dir.exists():
+            raise FileNotFoundError(f"ORIGA Images directory not found: {self.image_dir}")
 
-        if not csv_path.exists():
-            raise FileNotFoundError(f"Missing file: {csv_path}")
-        if not image_dir.exists():
-            raise FileNotFoundError(f"Missing directory: {image_dir}")
+        if not self.csv_file.exists():
+            raise FileNotFoundError(f"ORIGA CSV file not found: {self.csv_file}")
 
-        split_key = split.lower()
-        if split_key not in {"train", "val", "validation", "test", "all"}:
-            raise ValueError("split must be one of: train, val, validation, test, all")
+        # Load labels from CSV
+        self.samples = []  # List of tuples: (image_path, label)
 
-        self.samples = []
-        with csv_path.open("r", newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                set_name = str(row.get("Set", "")).strip().upper()
-                include = (
-                    split_key == "all"
-                    or (split_key == "train" and set_name == "A")
-                    or (split_key in {"val", "validation", "test"} and set_name == "B")
-                )
-                if not include:
-                    continue
+        try:
+            with open(self.csv_file, "r") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    filename = row.get("Filename")
+                    glaucoma_label = int(row.get("Glaucoma", 0))
 
-                filename = row["Filename"]
-                image_path = image_dir / filename
-                if not image_path.exists():
-                    continue
-
-                label = int(row["Glaucoma"])
-                ann_path = ann_dir / f"{Path(filename).stem}.mat"
-
-                self.samples.append(
-                    {
-                        "image_path": image_path,
-                        "label": label,
-                        "annotation_path": ann_path if ann_path.exists() else None,
-                    }
-                )
+                    if filename:
+                        image_path = self.image_dir / filename
+                        if image_path.exists():
+                            self.samples.append((image_path, glaucoma_label))
+        except Exception as e:
+            raise RuntimeError(f"Failed to load ORIGA CSV: {e}")
 
         if not self.samples:
-            raise FileNotFoundError("No ORIGA samples found for the requested split")
+            raise FileNotFoundError(
+                f"No valid image-label pairs found in {self.csv_file}"
+            )
 
     def __len__(self) -> int:
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> dict:
-        sample = self.samples[idx]
-        image_path = sample["image_path"]
+        image_path, label = self.samples[idx]
 
-        image = cv2.imread(str(image_path))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = Image.open(image_path).convert("RGB")
 
-        if self.transforms:
+        if self.transforms is not None:
             image = self.transforms(image)
         else:
-            image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+            image = np.array(image)
 
         return {
             "image": image,
-            "label": torch.tensor(sample["label"], dtype=torch.long),
+            "label": torch.tensor(label, dtype=torch.long),
             "path": str(image_path),
-            "annotation_path": str(sample["annotation_path"]) if sample["annotation_path"] is not None else None,
         }
