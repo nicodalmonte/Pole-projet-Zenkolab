@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 #SBATCH --job-name=dino_v3
-#SBATCH --output=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
-#SBATCH --error=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
+#SBATCH --output=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab/logs/train_%j.out
+#SBATCH --error=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab/logs/train_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
 #SBATCH --partition=prod80
@@ -24,7 +24,7 @@
 # Setup
 # ---------------------------------------------------------------------------
 
-PROJECT=/raid/home/students/damon_mat/P-le-Projet-Zenkolab
+PROJECT=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab
 
 # Activate virtual environment
 #I use uv
