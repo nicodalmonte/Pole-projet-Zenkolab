@@ -61,4 +61,4 @@ def install(NAME_LIST = None, reinstall_all = True):
                 print(f"Dataset {name} not found in the dataset dictionary.")
 
 if __name__ == '__main__':
-    install(NAME_LIST=["REFUGE2", "LAG"], reinstall_all = False)
+    install()

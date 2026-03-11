@@ -38,11 +38,14 @@ from src.models.dino_v3_1 import DinoV3_1
 # Transforms
 # ---------------------------------------------------------------------------
 
-def build_transforms(backbone_name: str, image_size: int = 224):
+def build_transforms(backbone_name: str, image_size: int = 896):
     """Return (train_transform, eval_transform) derived from the timm model config."""
     data_cfg = timm.data.resolve_model_data_config(
         timm.create_model(backbone_name, pretrained=False, num_classes=0)
     )
+    # Override the crop size so the full image_size is passed to the backbone.
+    # DINOv3 uses patch_size=16, so any multiple of 16 is valid.
+    data_cfg["input_size"] = (3, image_size, image_size)
     train_tf = timm.data.create_transform(**data_cfg, is_training=True)
     eval_tf = timm.data.create_transform(**data_cfg, is_training=False)
     return train_tf, eval_tf
@@ -51,14 +54,65 @@ def build_transforms(backbone_name: str, image_size: int = 224):
 # ---------------------------------------------------------------------------
 # Data
 # ---------------------------------------------------------------------------
+def _count_glaucoma(ds) -> tuple[int, int]:
+    """Return (n_glaucoma, total) by inspecting stored paths/labels.
+
+    No images are opened — only filename metadata / label lists are read.
+    """
+    if isinstance(ds, ACRIMADataset):
+        g = sum(1 for p in ds.image_paths if "_g_" in p.name)
+    elif isinstance(ds, LAGDataset):
+        g = sum(1 for p in ds.image_paths if p.name.startswith("g."))
+    elif isinstance(ds, ORIGADataset):
+        g = sum(lbl for _, lbl in ds.samples)
+    elif isinstance(ds, REFUGE2Dataset):
+        g = sum(1 for p in ds.image_paths if p.name.startswith("g"))
+    elif isinstance(ds, FundusTrainValDataset):
+        g = sum(ds.labels)
+    else:
+        return 0, len(ds)
+    return g, len(ds)
+
+
+def print_split_info(split_name: str, ds) -> None:
+    """Pretty-print size and class balance for a split (ConcatDataset or Dataset)."""
+    sub_datasets = ds.datasets if hasattr(ds, "datasets") else [ds]
+    rows: list[tuple[str, int, int, int]] = []
+    total_g = total_ng = 0
+    for sub in sub_datasets:
+        g, tot = _count_glaucoma(sub)
+        ng = tot - g
+        total_g += g
+        total_ng += ng
+        rows.append((type(sub).__name__, tot, g, ng))
+    total = total_g + total_ng
+    glaucoma_pct = 100.0 * total_g / total if total else 0.0
+
+    W = 64
+    print(f"\n{'─' * W}")
+    print(f"  {split_name}  —  {total} samples total")
+    print(f"{'─' * W}")
+    print(f"  {'Dataset':<32}  {'Total':>6}  {'Glaucoma':>9}  {'Non-Glauc.':>10}")
+    print(f"  {'─' * 60}")
+    for ds_name, tot, g, ng in rows:
+        print(f"  {ds_name:<32}  {tot:>6}  {g:>9}  {ng:>10}")
+    if len(rows) > 1:
+        print(f"  {'─' * 60}")
+        print(f"  {'TOTAL':<32}  {total:>6}  {total_g:>9}  {total_ng:>10}")
+    print(
+        f"  Class balance: {glaucoma_pct:.1f}% glaucoma / "
+        f"{100.0 - glaucoma_pct:.1f}% non-glaucoma"
+    )
+    print(f"{'─' * W}")
 
 def build_dataloaders(
     data_dir: str,
     backbone_name: str,
     batch_size: int,
     num_workers: int,
+    image_size: int = 896,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
-    train_tf, eval_tf = build_transforms(backbone_name)
+    train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
 
     # --- Train ---
     train_ds = ConcatDataset([
@@ -77,9 +131,12 @@ def build_dataloaders(
     # --- Test (REFUGE2, all three splits) ---
     test_ds = ConcatDataset([
         REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        REFUGE2Dataset(data_dir=data_dir, split="val", transforms=eval_tf),
-        REFUGE2Dataset(data_dir=data_dir, split="test", transforms=eval_tf),
     ])
+
+    # -- Print dataset details before building DataLoaders --
+    print_split_info("TRAIN", train_ds)
+    print_split_info("VAL  ", val_ds)
+    print_split_info("TEST (REFUGE2)", test_ds)
 
     pin = torch.cuda.is_available()
 
@@ -123,6 +180,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
     p.add_argument("--devices", default="auto")
     p.add_argument("--precision", default="16-mixed", choices=["32", "16-mixed", "bf16-mixed"])
+    p.add_argument(
+        "--image_size",
+        type=int,
+        default=896,
+        help="Input image size fed to the backbone. Must be a multiple of 16 "
+             "(patch size, DINOv3). Default 896 = 4×224, i.e. 56×56 patches — "
+             "chosen to preserve detail from high-res datasets (ORIGA ~3072px, "
+             "REFUGE2 ~2000px) while still being a clean 4× multiple of the "
+             "pretrained resolution (minimal positional-embedding interpolation "
+             "artefact). Lower-resolution datasets (ACRIMA ~332px median, LAG "
+             "500px) are upscaled by the transform. Reduce to 448 or 336 if "
+             "VRAM is tight.",
+    )
     return p.parse_args()
 
 
@@ -136,6 +206,7 @@ def main() -> None:
         backbone_name=args.backbone,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
+        image_size=args.image_size,
     )
 
     model = DinoV3_1(
@@ -146,6 +217,7 @@ def main() -> None:
         dropout=args.dropout,
         lr=args.lr,
         weight_decay=args.weight_decay,
+        img_size=args.image_size,
     )
 
     callbacks = [
