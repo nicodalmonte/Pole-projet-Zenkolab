@@ -22,8 +22,7 @@ __pycache__/
 *.pt
 *.ckpt
 *.bin
-data/
-models/
+
 
 # Env e segreti
 .env
