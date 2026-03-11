@@ -6,7 +6,7 @@ import timm
 import torch
 import torch.nn as nn
 import lightning as L
-from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, BinaryRecall, BinarySpecificity
+from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, BinaryF1Score, BinaryRecall, BinarySpecificity
 
 
 
@@ -68,15 +68,20 @@ class DinoV3_1(L.LightningModule):
         dropout: float = 0.2,
         lr: float = 1e-4,
         weight_decay: float = 1e-4,
+        img_size: int = 896,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
 
-        # Backbone — features only, no classifier head
+        # Backbone — features only, no classifier head.
+        # img_size must be passed so timm interpolates the positional embeddings
+        # from the pretrained 224×224 grid to the new resolution. Without it,
+        # forward passes at img_size != 224 will raise a shape mismatch error.
         self.backbone = timm.create_model(
             backbone_name,
             pretrained=pretrained,
             num_classes=0,  # remove classifier
+            img_size=img_size,
         )
         embed_dim: int = self.backbone.num_features
 
@@ -92,10 +97,12 @@ class DinoV3_1(L.LightningModule):
         self.train_auc = BinaryAUROC()
         self.val_auc = BinaryAUROC()
         self.val_acc = BinaryAccuracy()
+        self.val_f1 = BinaryF1Score()
         self.val_sensitivity = BinaryRecall()
         self.val_specificity = BinarySpecificity()
         self.test_auc = BinaryAUROC()
         self.test_acc = BinaryAccuracy()
+        self.test_f1 = BinaryF1Score()
         self.test_sensitivity = BinaryRecall()
         self.test_specificity = BinarySpecificity()
 
@@ -134,6 +141,7 @@ class DinoV3_1(L.LightningModule):
 
         self.val_auc.update(probs, batch["label"])
         self.val_acc.update(preds, batch["label"])
+        self.val_f1.update(preds, batch["label"])
         self.val_sensitivity.update(preds, batch["label"])
         self.val_specificity.update(preds, batch["label"])
 
@@ -142,10 +150,12 @@ class DinoV3_1(L.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self.log("val_auc", self.val_auc.compute(), prog_bar=True, sync_dist=True)
         self.log("val_acc", self.val_acc.compute(), prog_bar=True, sync_dist=True)
+        self.log("val_f1", self.val_f1.compute(), prog_bar=True, sync_dist=True)
         self.log("val_sensitivity", self.val_sensitivity.compute(), prog_bar=True, sync_dist=True)
         self.log("val_specificity", self.val_specificity.compute(), prog_bar=True, sync_dist=True)
         self.val_auc.reset()
         self.val_acc.reset()
+        self.val_f1.reset()
         self.val_sensitivity.reset()
         self.val_specificity.reset()
 
@@ -155,16 +165,19 @@ class DinoV3_1(L.LightningModule):
         preds = logits.argmax(dim=-1)
         self.test_auc.update(probs, batch["label"])
         self.test_acc.update(preds, batch["label"])
+        self.test_f1.update(preds, batch["label"])
         self.test_sensitivity.update(preds, batch["label"])
         self.test_specificity.update(preds, batch["label"])
 
     def on_test_epoch_end(self) -> None:
         self.log("test_auc", self.test_auc.compute(), prog_bar=True, sync_dist=True)
         self.log("test_acc", self.test_acc.compute(), prog_bar=True, sync_dist=True)
+        self.log("test_f1", self.test_f1.compute(), prog_bar=True, sync_dist=True)
         self.log("test_sensitivity", self.test_sensitivity.compute(), prog_bar=True, sync_dist=True)
         self.log("test_specificity", self.test_specificity.compute(), prog_bar=True, sync_dist=True)
         self.test_auc.reset()
         self.test_acc.reset()
+        self.test_f1.reset()
         self.test_sensitivity.reset()
         self.test_specificity.reset()
 
