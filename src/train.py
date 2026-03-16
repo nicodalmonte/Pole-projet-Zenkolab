@@ -18,9 +18,9 @@ model= DINOv3large().to(device)
 loss= torch.nn.CrossEntropyLoss()
 optimizer=torch.optim.Adam(params= model.parameters() , lr=1e-4)
 
-EPOCHS=50
+EPOCHS=2
 
 for epoch in range(EPOCHS):
-    train_loss=train_one_epoch(train_dataloader, model, loss, optimizer)
+    train_loss=train_one_epoch(train_dataloader, model, loss, optimizer, device)
     val_loss, val_metrics = validate(validation_dataloader, model, loss, device)
     print(f"Epoch {epoch+1}/{EPOCHS} | train_loss: {train_loss:.4f} | val_loss: {val_loss:.4f} | AUC: {val_metrics['auc']:.4f}")
