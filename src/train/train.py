@@ -105,6 +105,22 @@ def print_split_info(split_name: str, ds) -> None:
     )
     print(f"{'─' * W}")
 
+def compute_class_weights(train_ds) -> list[float]:
+    """Return inverse-frequency class weights [w_neg, w_pos] from the training ConcatDataset."""
+    sub_datasets = train_ds.datasets if hasattr(train_ds, "datasets") else [train_ds]
+    total_g = total_ng = 0
+    for sub in sub_datasets:
+        g, tot = _count_glaucoma(sub)
+        total_g += g
+        total_ng += tot - g
+    total = total_g + total_ng
+    if total_ng == 0 or total_g == 0:
+        return [1.0, 1.0]
+    w_neg = total / (2.0 * total_ng)
+    w_pos = total / (2.0 * total_g)
+    return [w_neg, w_pos]
+
+
 def build_dataloaders(
     data_dir: str,
     backbone_name: str,
@@ -173,6 +189,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--dropout", type=float, default=0.2)
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--weight_decay", type=float, default=1e-4)
+    p.add_argument(
+        "--unfreeze_backbone_epoch",
+        type=int,
+        default=3,
+        help="If > 0, keep the backbone frozen until this epoch, then unfreeze it.",
+    )
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--max_epochs", type=int, default=50)
     p.add_argument("--num_workers", type=int, default=8)
@@ -193,6 +215,16 @@ def parse_args() -> argparse.Namespace:
              "500px) are upscaled by the transform. Reduce to 448 or 336 if "
              "VRAM is tight.",
     )
+    p.add_argument(
+        "--class_weights",
+        type=float,
+        nargs=2,
+        default=None,
+        metavar=("W_NEG", "W_POS"),
+        help="Manual class weights for [non-glaucoma, glaucoma]. "
+             "If omitted, weights are computed automatically from the training "
+             "set using inverse-frequency balancing.",
+    )
     return p.parse_args()
 
 
@@ -209,6 +241,9 @@ def main() -> None:
         image_size=args.image_size,
     )
 
+    class_weights = args.class_weights if args.class_weights is not None else compute_class_weights(train_dl.dataset)
+    print(f"\nClass weights — non-glaucoma: {class_weights[0]:.4f}  glaucoma: {class_weights[1]:.4f}")
+
     model = DinoV3_1(
         backbone_name=args.backbone,
         pretrained=args.pretrained,
@@ -218,6 +253,8 @@ def main() -> None:
         lr=args.lr,
         weight_decay=args.weight_decay,
         img_size=args.image_size,
+        class_weights=class_weights,
+        unfreeze_backbone_epoch=args.unfreeze_backbone_epoch,
     )
 
     callbacks = [

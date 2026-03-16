@@ -5,6 +5,7 @@ from __future__ import annotations
 import timm
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import lightning as L
 from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, BinaryF1Score, BinaryRecall, BinarySpecificity
 
@@ -29,17 +30,8 @@ class _Head(nn.Module):
         self.layers = nn.Sequential(
             # Layer 1
             nn.LayerNorm(in_features),
-            nn.Linear(in_features, hidden_dim),
-            nn.GELU(),
             nn.Dropout(dropout),
-            # Layer 2
-            nn.LayerNorm(hidden_dim),
-            nn.Linear(hidden_dim, hidden_dim // 2),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            # Layer 3
-            nn.LayerNorm(hidden_dim // 2),
-            nn.Linear(hidden_dim // 2, num_classes),
+            nn.Linear(in_features, num_classes),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -69,14 +61,12 @@ class DinoV3_1(L.LightningModule):
         lr: float = 1e-4,
         weight_decay: float = 1e-4,
         img_size: int = 896,
+        class_weights: list[float] | None = None,
+        unfreeze_backbone_epoch: int = 0,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
 
-        # Backbone — features only, no classifier head.
-        # img_size must be passed so timm interpolates the positional embeddings
-        # from the pretrained 224×224 grid to the new resolution. Without it,
-        # forward passes at img_size != 224 will raise a shape mismatch error.
         self.backbone = timm.create_model(
             backbone_name,
             pretrained=pretrained,
@@ -85,6 +75,10 @@ class DinoV3_1(L.LightningModule):
         )
         embed_dim: int = self.backbone.num_features
 
+        self._backbone_is_frozen = False
+        if unfreeze_backbone_epoch > 0:
+            self._freeze_backbone()
+
         self.head = _Head(
             in_features=embed_dim,
             hidden_dim=hidden_dim,
@@ -92,7 +86,8 @@ class DinoV3_1(L.LightningModule):
             dropout=dropout,
         )
 
-        self.loss_fn = nn.CrossEntropyLoss()
+        weight = torch.tensor(class_weights, dtype=torch.float32) if class_weights is not None else None
+        self.register_buffer("loss_weight", weight)
 
         self.train_auc = BinaryAUROC()
         self.val_auc = BinaryAUROC()
@@ -105,6 +100,16 @@ class DinoV3_1(L.LightningModule):
         self.test_f1 = BinaryF1Score()
         self.test_sensitivity = BinaryRecall()
         self.test_specificity = BinarySpecificity()
+
+    def _freeze_backbone(self) -> None:
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+        self._backbone_is_frozen = True
+
+    def _unfreeze_backbone(self) -> None:
+        for p in self.backbone.parameters():
+            p.requires_grad = True
+        self._backbone_is_frozen = False
 
     # ------------------------------------------------------------------
     # Forward
@@ -120,7 +125,7 @@ class DinoV3_1(L.LightningModule):
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         logits = self(batch["image"])
-        loss = self.loss_fn(logits, batch["label"])
+        loss = F.cross_entropy(logits, batch["label"], weight=self.loss_weight)
 
         probs = torch.softmax(logits, dim=-1)[:, 1]
         self.train_auc.update(probs, batch["label"])
@@ -128,13 +133,19 @@ class DinoV3_1(L.LightningModule):
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
+    def on_train_epoch_start(self) -> None:
+        target_epoch = int(self.hparams.unfreeze_backbone_epoch)
+        if self._backbone_is_frozen and self.current_epoch >= target_epoch:
+            self._unfreeze_backbone()
+            self.print(f"Unfroze backbone at epoch {self.current_epoch}.")
+
     def on_train_epoch_end(self) -> None:
         self.log("train_auc", self.train_auc.compute(), prog_bar=True, sync_dist=True)
         self.train_auc.reset()
 
     def validation_step(self, batch: dict, batch_idx: int) -> None:
         logits = self(batch["image"])
-        loss = self.loss_fn(logits, batch["label"])
+        loss = F.cross_entropy(logits, batch["label"], weight=self.loss_weight)
 
         probs = torch.softmax(logits, dim=-1)[:, 1]
         preds = logits.argmax(dim=-1)
