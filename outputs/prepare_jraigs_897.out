@@ -1,0 +1,17 @@
+======================================================
+  Job ID     : 897
+  Node       : dgx-a100
+  GPU(s)     : MIG-1dffd88e-2c6f-5142-b2b2-1bceda9a9734
+  Start time : Wed Mar 11 17:00:25 CET 2026
+  CWD        : /raid/home/students/hawky_luc/P-le-Projet-Zenkolab
+======================================================
+Loaded 101423 rows, 37 columns
+After filter (not UR, G1==G2): 93014 rows
+Removed 3 rows with non-empty G3 columns
+Dropped 13 columns, 24 remaining
+Saved to /raid/home/students/hawky_luc/P-le-Projet-Zenkolab/outputs/jraigs_prepared.csv
+Images exported: 93011  |  missing: 0
+Image stats device: cuda
+Updated output CSV with image stats: /raid/home/students/hawky_luc/P-le-Projet-Zenkolab/outputs/jraigs_prepared.csv
+Final CSV with image paths: /raid/home/students/hawky_luc/P-le-Projet-Zenkolab/datasets/jraigs_prepared/labels.csv
+End time : Wed Mar 11 19:29:59 CET 2026
