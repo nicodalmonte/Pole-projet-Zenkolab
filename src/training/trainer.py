@@ -1,11 +1,11 @@
 import torch 
 from src.training.metrics import compute_metrics
 import numpy as np
-
+from tqdm import tqdm
 def train_one_epoch(dataloader, model, criterion, optimizer, device):
     model.train()
     train_total_loss=0.0
-    for batch, (image, label) in enumerate(dataloader):
+    for batch, (image, label) in enumerate(tqdm(dataloader, desc="training")):
         image , label = image.to(device) , label.to(device)
         optimizer.zero_grad()
         pred=model(image)

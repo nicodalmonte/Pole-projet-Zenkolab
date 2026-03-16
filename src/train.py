@@ -3,6 +3,7 @@ from src.data.transforms import get_train_transforms, get_val_transforms
 from torch.utils.data import DataLoader
 import torch
 from src.models.model import DINOv3large
+from src.training.trainer import train_one_epoch, validate
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 
 training_set= LAGDataset(root= "datasets/LAG/LAG/train/", transform=get_train_transforms())
@@ -14,3 +15,12 @@ validation_dataloader= DataLoader(validation_set, batch_size=64, shuffle=False)
 test_dataloader = DataLoader(test_set, batch_size=64, shuffle=False)    
 
 model= DINOv3large().to(device)
+loss= torch.nn.CrossEntropyLoss()
+optimizer=torch.optim.Adam(params= model.parameters() , lr=1e-4)
+
+EPOCHS=50
+
+for epoch in range(EPOCHS):
+    train_loss=train_one_epoch(train_dataloader, model, loss, optimizer)
+    val_loss, val_metrics = validate(validation_dataloader, model, loss, device)
+    print(f"Epoch {epoch+1}/{EPOCHS} | train_loss: {train_loss:.4f} | val_loss: {val_loss:.4f} | AUC: {val_metrics['auc']:.4f}")
