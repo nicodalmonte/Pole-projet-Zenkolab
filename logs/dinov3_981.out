@@ -1,0 +1,7 @@
+Job ID     : 981
+Node       : dgx-a100
+GPU(s)     : MIG-bff49a7d-53d6-5d80-a43b-40a91aacb93a
+Start time : Mon Mar 16 15:13:11 CET 2026
+Epoch 1/50 | train_loss: 0.3877 | val_loss: 0.3522 | AUC: 0.9703
+Epoch 2/50 | train_loss: 0.1881 | val_loss: 0.1671 | AUC: 0.9855
+Epoch 3/50 | train_loss: 0.1166 | val_loss: 0.1699 | AUC: 0.9852
