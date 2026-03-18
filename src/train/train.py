@@ -183,7 +183,7 @@ def build_dataloaders(
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train DinoV3_1 glaucoma classifier")
     p.add_argument("--data_dir", default="data/datasets")
-    p.add_argument("--backbone", default="vit_small_patch16_dinov3")
+    p.add_argument("--backbone", default="vit_huge_plus_patch16_dinov3.lvd1689m")
     p.add_argument("--pretrained", action="store_true", default=True)
     p.add_argument("--hidden_dim", type=int, default=256)
     p.add_argument("--dropout", type=float, default=0.2)
@@ -260,7 +260,7 @@ def main() -> None:
     callbacks = [
         ModelCheckpoint(
             dirpath=args.checkpoint_dir,
-            filename="dinov3_1-{epoch:02d}-{val_auc:.4f}",
+            filename="dinov3_1-{v_num:02d}-{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
@@ -270,6 +270,7 @@ def main() -> None:
             monitor="val_auc",
             mode="max",
             patience=10,
+            min_delta=1e-3,
             verbose=True,
         ),
         LearningRateMonitor(logging_interval="epoch"),
@@ -290,7 +291,7 @@ def main() -> None:
         enable_progress_bar=True,
         enable_model_summary=False,  # handled by RichModelSummary
     )
-
+    torch.set_float32_matmul_precision('medium')
     trainer.fit(model, train_dl, val_dl, ckpt_path=args.resume)
 
     # --- Test on REFUGE2 using the best checkpoint ---
