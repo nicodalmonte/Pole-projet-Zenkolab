@@ -2,6 +2,7 @@ import torch
 from src.training.metrics import compute_metrics
 import numpy as np
 from tqdm import tqdm
+
 def train_one_epoch(dataloader, model, criterion, optimizer, device):
     model.train()
     train_total_loss=0.0
@@ -17,7 +18,7 @@ def train_one_epoch(dataloader, model, criterion, optimizer, device):
     return avg_train_loss
 
 
-def validate(dataloader, model, criterion, device):
+def validate(dataloader, model, criterion, device, threshold):
     model.eval()
     test_total_loss=0.0
     all_labels = []
@@ -30,7 +31,7 @@ def validate(dataloader, model, criterion, device):
             test_total_loss+=test_loss.item()
             all_labels.extend(label.cpu().numpy())
             all_probs.extend(torch.softmax(pred, dim=1)[:, 1].cpu().numpy())
-    all_preds = (np.array(all_probs) >= 0.5).astype(int)
+    all_preds = (np.array(all_probs) >= threshold).astype(int)
     metrics = compute_metrics(all_labels, all_probs, all_preds)
     avg_test_loss= test_total_loss/len(dataloader)
     return avg_test_loss, metrics

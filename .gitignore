@@ -37,3 +37,7 @@ Thumbs.db
 .idea/
 banco_di_prova.ipynb
 datasets/
+
+checkpoints/
+logs/
+mlflow.db

@@ -19,7 +19,7 @@ set_seed(42)
 EPOCHS=50
 BATCH_SIZE=64
 LR= 1e-4
-
+THRESHOLD = 0.4
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 
 training_set= LAGDataset(root= "datasets/LAG/LAG/train/", transform=get_train_transforms())
@@ -43,22 +43,25 @@ early_stopping = early_stopping.EarlyStopping(patience=patience, delta=delta, ve
 
 mlflow_utils.setup_mlflow("DINOv3-LAG")
 
-with mlflow.start_run():
+with mlflow.start_run() as run:
+    run_id=run.info.run_id
     # log degli iperparametri (una volta sola, fuori dal loop)
     mlflow.log_param("epochs", EPOCHS)
     mlflow.log_param("batch_size", BATCH_SIZE)
     mlflow.log_param("learning rate", LR)
+    mlflow.log_param("threshold", THRESHOLD)
+
 
     for epoch in range(EPOCHS):
         train_loss=train_one_epoch(train_dataloader, model, loss, optimizer, device)
-        val_loss, val_metrics = validate(validation_dataloader, model, loss, device)# Check early stopping condition
-        early_stopping.check_early_stop(val_loss, model)
+        val_loss, val_metrics = validate(validation_dataloader, model, loss, device, threshold=THRESHOLD)# Check early stopping condition
+        early_stopping.check_early_stop(val_loss, model, run_id)
         print(f"Epoch {epoch+1}/{EPOCHS} | train_loss: {train_loss:.4f} | val_loss: {val_loss:.4f} | AUC: {val_metrics['auc']:.4f}")
         mlflow_utils.log_epoch(epoch, train_loss, val_loss, val_metrics)
         if early_stopping.stop_training:
             print(f"Early stopping at epoch {epoch}")
             break
-    test_loss, metric_loss=validate(test_dataloader,model,loss,device)
+    test_loss, metric_loss=validate(test_dataloader,model,loss,device, threshold=THRESHOLD)
     mlflow.log_metric("test_loss", test_loss)
     for key, value in metric_loss.items():
         mlflow.log_metric(f"test_{key}", value)
