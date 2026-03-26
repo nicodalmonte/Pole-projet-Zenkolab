@@ -19,6 +19,7 @@ import argparse
 import timm
 import torch
 from torch.utils.data import ConcatDataset, DataLoader
+from torchvision import transforms
 import lightning as L
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.callbacks import RichModelSummary, RichProgressBar
@@ -32,6 +33,7 @@ from src.datasets import (
     REFUGE2Dataset,
 )
 from src.models.dino_v3_1 import DinoV3_1
+from datasets.augmentations import AUGMENTATION_TRANSFORMS
 
 
 # ---------------------------------------------------------------------------
@@ -39,16 +41,31 @@ from src.models.dino_v3_1 import DinoV3_1
 # ---------------------------------------------------------------------------
 
 def build_transforms(backbone_name: str, image_size: int = 896):
-    """Return (train_transform, eval_transform) derived from the timm model config."""
+    """Return (train_transform, eval_transform) derived from the timm model config.
+    
+    Training transforms include data augmentations (rotations, affine transforms, etc.)
+    defined in src.augmentations.AUGMENTATION_TRANSFORMS.
+    
+    Evaluation transforms do not include augmentations.
+    """
     data_cfg = timm.data.resolve_model_data_config(
         timm.create_model(backbone_name, pretrained=False, num_classes=0)
     )
     # Override the crop size so the full image_size is passed to the backbone.
     # DINOv3 uses patch_size=16, so any multiple of 16 is valid.
     data_cfg["input_size"] = (3, image_size, image_size)
-    train_tf = timm.data.create_transform(**data_cfg, is_training=True)
-    eval_tf = timm.data.create_transform(**data_cfg, is_training=False)
-    return train_tf, eval_tf
+    
+    # Build the timm transforms
+    timm_train_tf = timm.data.create_transform(**data_cfg, is_training=True)
+    timm_eval_tf = timm.data.create_transform(**data_cfg, is_training=False)
+    
+    # Compose timm transforms with augmentations for training
+    train_tf = transforms.Compose([
+        AUGMENTATION_TRANSFORMS,
+        timm_train_tf,
+    ])
+    
+    return train_tf, timm_eval_tf
 
 
 # ---------------------------------------------------------------------------
