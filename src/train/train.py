@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
 
-import timm
+import timm 
 import torch
 from torch.utils.data import ConcatDataset, DataLoader
 from torchvision import transforms
