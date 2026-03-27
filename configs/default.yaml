@@ -1,0 +1,9 @@
+epochs: 50
+batch_size: 64
+lr: 1e-4
+patience: 4
+threshold: 0.4
+delta: 0.01
+train_dataset: LAG
+val_dataset: LAG
+test_dataset: REFUGE2

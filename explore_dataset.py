@@ -3,16 +3,46 @@ import shutil
 import os
 from pathlib import Path
 from collections import defaultdict
+import pandas as pd
 
 def download_dataset():
     path = kagglehub.dataset_download("sreeharims/glaucoma-dataset")
-    dest = Path("datasets/LAG")
+    dest = Path("datasets/")
     if not dest.exists():
         shutil.copytree(path, dest)
         print(f"Dataset copiato in: {dest}")
     else:
         print(f"Dataset già presente in: {dest}")
     return dest
+
+def remove_test_split(root: Path):
+    """
+    Sposta le immagini dalla cartella 'test' a 'train' e poi elimina 'test'.
+    """
+    print(f"\n{'='*50}")
+    print("Riorganizzazione split: unione di 'test' in 'train'...")
+    print(f"{'='*50}")
+    
+    test_dir = root / "LAG" / "test"
+    train_dir = root / "LAG" / "train"
+    
+    if test_dir.exists():
+        # Ci assicuriamo che la cartella train esista
+        train_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Sposta tutti i file
+        moved_count = 0
+        for item in test_dir.glob("*.jpg"): # Sposta solo le immagini jpg
+            if item.is_file():
+                shutil.move(str(item), str(train_dir / item.name))
+                moved_count += 1
+        
+        # Rimuove la cartella test ormai vuota (ignora eventuali file nascosti/di sistema)
+        shutil.rmtree(test_dir, ignore_errors=True)
+        print(f"  Spostate {moved_count} immagini da 'test' a 'train'.")
+        print("  Cartella 'test' eliminata con successo.")
+    else:
+        print("  Cartella 'test' non trovata. Potrebbe essere già stata unita.")
 
 def explore(root: Path):
     print(f"\n{'='*50}")
@@ -52,32 +82,33 @@ def explore(root: Path):
 
     print(f"\nEstensioni trovate: {dict(extensions)}")
     print(f"Totale immagini:    {sum(class_counts.values())}")
-import pandas as pd
+
 
 def explore_labels(root: Path):
     print(f"\n{'='*50}")
     print("Cercando file di etichette...")
     print(f"{'='*50}")
 
-    # Cerca tutti i file non-immagine
     for dirpath, _, filenames in os.walk(root):
         for f in filenames:
             if not f.lower().endswith((".jpg", ".jpeg", ".png")):
                 full = Path(dirpath) / f
                 print(f"  Trovato: {full}")
 
-                # Se è un CSV, stampane le prime righe
                 if f.endswith(".csv"):
                     df = pd.read_csv(full)
                     print(f"  Shape: {df.shape}")
                     print(f"  Colonne: {list(df.columns)}")
                     print(df.head())
+
+
 def explore_filenames(root: Path):
     print(f"\n{'='*50}")
     print("Analisi nomi file:")
     print(f"{'='*50}")
 
-    for split in ["train", "validation", "test"]:
+    # Rimosso "test" dalla lista di analisi
+    for split in ["train", "validation"]:
         split_path = root / "LAG" / split
         if not split_path.exists():
             continue
@@ -86,9 +117,6 @@ def explore_filenames(root: Path):
         prefixes = defaultdict(int)
 
         for f in files:
-            # Prende il prefisso prima del punto
-            # es. "g.0005.jpg" → "g"
-            # es. "n.0005.jpg" → "n"
             prefix = f.stem.split(".")[0]
             prefixes[prefix] += 1
 
@@ -98,6 +126,7 @@ def explore_filenames(root: Path):
 
 if __name__ == "__main__":
     root = download_dataset()
+    remove_test_split(root) # <- Esegue lo spostamento dei file
     explore(root)
     explore_labels(root)
     explore_filenames(root)
