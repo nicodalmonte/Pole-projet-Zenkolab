@@ -230,7 +230,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--max_epochs", type=int, default=50)
-    p.add_argument("--num_workers", type=int, default=8)
+    p.add_argument("--num_workers", type=int, default=-1)
     p.add_argument("--checkpoint_dir", default="checkpoints")
     p.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
     p.add_argument("--devices", default="auto")
@@ -296,7 +296,7 @@ def main() -> None:
 
     callbacks = [
         ModelCheckpoint(
-            dirpath=f"{args.checkpoint_dir}/version_{{version_number}}",
+            dirpath=f"{args.checkpoint_dir}/version_{version_number}",
             filename="dinov3_1-{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
