@@ -16,8 +16,7 @@ class GlaucomaDataset(Dataset):
         image = Image.open(img_path).convert("RGB")
         
         # g -> 1 (glaucoma), altrimenti -> 0 (sano)
-        prefix = img_path.stem.split(".")[0]
-        label = 1 if prefix == "g" else 0
+        label = 1 if img_path.name.startswith("g") else 0
         
         if self.transform is not None:
             image = self.transform(image)
