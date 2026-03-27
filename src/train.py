@@ -26,7 +26,7 @@ with open("configs/default.yaml", "r") as f:
 #hyperparameters
 EPOCHS=cfg["epochs"]
 BATCH_SIZE=cfg["batch_size"]
-LR= cfg["lr"]
+LR= float(cfg["lr"])
 THRESHOLD = cfg["threshold"]
 TRAIN_DATASET = cfg["train_dataset"]
 VAL_DATASET = cfg["val_dataset"]
