@@ -44,4 +44,4 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-uv run src/train/train.py --batch_size 8 --precision 16-mixed
+uv run src/train/train.py --batch_size 32 --precision 16-mixed --image_size 448 --backbone vit_large_patch16_dinov3.lvd1689m

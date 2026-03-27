@@ -85,6 +85,7 @@ lightning_logs/
 *.rar
 *.7z
 *.csv
+!**/filtered_labels.csv
 *.xlsx
 *.xls
 output/
@@ -93,7 +94,7 @@ predictions/
 *.pkl
 *.pickle
 *.joblib
-data
+data/**
 job.batch
 
 # OS Files

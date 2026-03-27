@@ -31,9 +31,10 @@ from src.datasets import (
     LAGDataset,
     ORIGADataset,
     REFUGE2Dataset,
+    JRAIGSDataset,
 )
 from src.models.dino_v3_1 import DinoV3_1
-from datasets.augmentations import AUGMENTATION_TRANSFORMS
+from src.datasets.augmentations import AUGMENTATION_TRANSFORMS
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +87,8 @@ def _count_glaucoma(ds) -> tuple[int, int]:
         g = sum(1 for p in ds.image_paths if p.name.startswith("g"))
     elif isinstance(ds, FundusTrainValDataset):
         g = sum(ds.labels)
+    elif isinstance(ds, JRAIGSDataset):
+        g = sum(lbl for _, lbl in ds.samples)
     else:
         return 0, len(ds)
     return g, len(ds)
@@ -147,23 +150,36 @@ def build_dataloaders(
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
 
-    # --- Train ---
+    ## --- Train ---
+    #train_ds = ConcatDataset([
+    #    ACRIMADataset(data_dir=data_dir, split="train", transforms=train_tf),
+    #    LAGDataset(data_dir=data_dir, split="train", transforms=train_tf),
+    #    ORIGADataset(data_dir=data_dir, split="train", transforms=train_tf),
+    #])
+#
+    ## --- Val ---
+    #val_ds = ConcatDataset([
+    #    FundusTrainValDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
+    #    LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
+    #])
+#
+    ## --- Test (REFUGE2, all three splits) ---
+    #test_ds = ConcatDataset([
+    #    REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
+    #])
+
     train_ds = ConcatDataset([
-        ACRIMADataset(data_dir=data_dir, split="train", transforms=train_tf),
-        FundusTrainValDataset(data_dir=data_dir, split="train", transforms=train_tf),
-        LAGDataset(data_dir=data_dir, split="train", transforms=train_tf),
-        ORIGADataset(data_dir=data_dir, split="train", transforms=train_tf),
+        JRAIGSDataset(data_dir=data_dir, transforms=train_tf),
     ])
 
-    # --- Val ---
     val_ds = ConcatDataset([
-        FundusTrainValDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
-        LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
+        ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf)
     ])
 
-    # --- Test (REFUGE2, all three splits) ---
     test_ds = ConcatDataset([
-        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),        
     ])
 
     # -- Print dataset details before building DataLoaders --
@@ -274,10 +290,14 @@ def main() -> None:
         unfreeze_backbone_epoch=args.unfreeze_backbone_epoch,
     )
 
+    logger = CSVLogger(save_dir="lightning_logs", name="dinov3_1")
+    version_number = logger.version
+    print(f"L Logging to: lightning_logs/dinov3_1/version_{version_number}")
+
     callbacks = [
         ModelCheckpoint(
-            dirpath=args.checkpoint_dir,
-            filename="dinov3_1-{v_num:02d}-{epoch:02d}-{val_auc:.4f}",
+            dirpath=f"{args.checkpoint_dir}/version_{{version_number}}",
+            filename="dinov3_1-{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
@@ -294,8 +314,6 @@ def main() -> None:
         RichProgressBar(leave=True),
         RichModelSummary(max_depth=3),
     ]
-
-    logger = CSVLogger(save_dir="lightning_logs", name="dinov3_1")
 
     trainer = L.Trainer(
         max_epochs=args.max_epochs,
