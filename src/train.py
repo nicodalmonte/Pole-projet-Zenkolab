@@ -20,7 +20,7 @@ set_seed(42)
 #yaml 
 import yaml
 
-with open("configs/train.yaml", "r") as f:
+with open("configs/default.yaml", "r") as f:
     cfg = yaml.safe_load(f)
 
 #hyperparameters
@@ -70,15 +70,15 @@ with mlflow.start_run() as run:
     delta = DELTA  # minimum change in the monitored metric
     best_val_loss = float("inf")  # best validation loss to compare against
     no_improvement_count = 0  # count of epochs with no improvement
-    early_stopping = early_stopping.EarlyStopping(patience=patience, delta=delta, verbose=True)
+    early_stopper = early_stopping.EarlyStopping(patience=patience, delta=delta, verbose=True)
 
     for epoch in range(EPOCHS):
         train_loss=train_one_epoch(train_dataloader, model, loss, optimizer, device)
         val_loss, val_metrics = validate(validation_dataloader, model, loss, device, threshold=THRESHOLD)# Check early stopping condition
-        early_stopping.check_early_stop(val_loss, model, run_id)
+        early_stopper.check_early_stop(val_loss, model, run_id)
         print(f"Epoch {epoch+1}/{EPOCHS} | train_loss: {train_loss:.4f} | val_loss: {val_loss:.4f} | AUC: {val_metrics['auc']:.4f}")
         mlflow_utils.log_epoch(epoch, train_loss, val_loss, val_metrics)
-        if early_stopping.stop_training:
+        if early_stopper.stop_training:
             print(f"Early stopping at epoch {epoch}")
             break
     test_loss, metric_loss=validate(test_dataloader,model,loss,device, threshold=THRESHOLD)
