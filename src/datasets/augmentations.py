@@ -23,12 +23,12 @@ def create_augmentation_transforms():
         ),
         transforms.RandomHorizontalFlip(p=0.5),  # Random horizontal flip
         transforms.RandomVerticalFlip(p=0.5),  # Random vertical flip
-        transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Gaussian blur
-        transforms.ColorJitter(
-            brightness=0.2,
-            contrast=0.2,
-            saturation=0.2,
-        ),  # Random color jittering
+        #transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Gaussian blur
+        #transforms.ColorJitter(
+        #    brightness=0.2,
+        #    contrast=0.2,
+        #    saturation=0.2,
+        #),  # Random color jittering
     ])
     return augmentation_transforms
 
