@@ -13,6 +13,9 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 
+class _StudentBackbone(L.LightningModule):
+    
+
 
 class _StudentHead(nn.Module):
     """Small but expressive classification head.

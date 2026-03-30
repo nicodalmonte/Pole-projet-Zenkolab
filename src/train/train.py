@@ -192,7 +192,7 @@ def build_dataloaders(
     train_ds = ConcatDataset([
         Subset(jraigs_train, selected_indices),
     ])
-    
+    #traind_ds = jraigs_train ## if I want all to use all the images
     
 
     val_ds = ConcatDataset([
