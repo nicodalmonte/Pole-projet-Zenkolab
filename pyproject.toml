@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "kaggle>=2.0.0",
+    "pandas>=3.0.1",
     "kagglehub>=1.0.0",
     "lightning>=2.6.1",
     "mlflow>=3.10.1",
@@ -14,6 +15,7 @@ dependencies = [
     "timm>=1.0.25",
     "torch>=2.10.0",
     "torchvision>=0.25.0",
+    "uv>=0.10.9",
 ]
 [[tool.uv.index]]
 name = "pytorch-cu126"

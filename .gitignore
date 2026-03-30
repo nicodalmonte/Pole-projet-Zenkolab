@@ -1,43 +1,150 @@
-venv/
-.venv/
-paper/
-# Virtual environment
-.venv/
-
-# Cache Python
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# uv
-.uv/
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+env.bak/
+venv.bak/
 
-# Jupyter
-.ipynb_checkpoints/
-
-# Dati e modelli (spesso pesanti)
-*.csv
-*.parquet
-*.pt
-*.ckpt
-*.bin
-
-
-# Env e segreti
-.env
-*.key
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
+# IDE & Editors
 .vscode/
 .idea/
-banco_di_prova.ipynb
-datasets/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.vim/
+.emacs.desktop*
 
+# Jupyter & Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing & Coverage
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ML/Deep Learning Models & Weights
+*.pth
+*.pt
+*.ckpt
+checkpoint/
 checkpoints/
+pretrained/
+weights/
+*.h5
+*.pb
+*.onnx
+runs/
 logs/
-mlflow.db
+tb_logs/
+lightning_logs/
+
+# Data Files & Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.csv
+!**/filtered_labels.csv
+*.xlsx
+*.xls
+output/
+results/
+predictions/
+*.pkl
+*.pickle
+*.joblib
+data/**
+job.batch
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+secrets/
+credentials/
+
+# Build & Distribution
+*.o
+*.a
+*.dylib
+*.dll
+*.exe
+
+# Documentation
+site/
+docs/_build/
+
+# Type Checking & Linting
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.ruff_cache/
+.pylint_cache/
+
+# Logs & Debug
+*.log
+debug.log
+npm-debug.log*
+
+# Documentation & Papers
+paper/
+papers/
+
+# Miscellaneous
+.cache/
+*.bak
+*~
+*.swp
+.pytest_cache/
