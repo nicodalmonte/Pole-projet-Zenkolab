@@ -18,7 +18,7 @@ import argparse
 
 import timm 
 import torch
-from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.data import ConcatDataset, DataLoader, Subset
 from torchvision import transforms
 import lightning as L
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor
@@ -77,6 +77,13 @@ def _count_glaucoma(ds) -> tuple[int, int]:
 
     No images are opened — only filename metadata / label lists are read.
     """
+    if isinstance(ds, Subset):
+        base_ds = ds.dataset
+        if hasattr(base_ds, "samples"):
+            g = sum(base_ds.samples[i][1] for i in ds.indices)
+            return g, len(ds)
+        return 0, len(ds)
+
     if isinstance(ds, ACRIMADataset):
         g = sum(1 for p in ds.image_paths if "_g_" in p.name)
     elif isinstance(ds, LAGDataset):
@@ -149,6 +156,7 @@ def build_dataloaders(
     image_size: int = 896,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
+    target_train_size = 8_000
 
     ## --- Train ---
     #train_ds = ConcatDataset([
@@ -168,9 +176,24 @@ def build_dataloaders(
     #    REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
     #])
 
+    jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
+    glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
+    non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
+
+    remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
+    if remaining_slots >= len(non_glaucoma_indices):
+        selected_non_glaucoma = non_glaucoma_indices
+    else:
+        g = torch.Generator().manual_seed(42)
+        perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
+        selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+
+    selected_indices = glaucoma_indices + selected_non_glaucoma
     train_ds = ConcatDataset([
-        JRAIGSDataset(data_dir=data_dir, transforms=train_tf),
+        Subset(jraigs_train, selected_indices),
     ])
+    
+    
 
     val_ds = ConcatDataset([
         ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
@@ -230,7 +253,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--max_epochs", type=int, default=50)
-    p.add_argument("--num_workers", type=int, default=-1)
+    p.add_argument("--num_workers", type=int, default=16)
     p.add_argument("--checkpoint_dir", default="checkpoints")
     p.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
     p.add_argument("--devices", default="auto")
@@ -297,7 +320,7 @@ def main() -> None:
     callbacks = [
         ModelCheckpoint(
             dirpath=f"{args.checkpoint_dir}/version_{version_number}",
-            filename="dinov3_1-{epoch:02d}-{val_auc:.4f}",
+            filename=f"dinov3_1_v{version_number}-"+"{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
