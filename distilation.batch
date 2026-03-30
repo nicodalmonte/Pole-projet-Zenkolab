@@ -50,9 +50,9 @@ fi
 
 uv run src/distilation/distilation.py \
     --data_dir data/datasets \
-    --teacher_ckpt checkpoints/dinov3_1-v_num=00-epoch=39-val_auc=0.9924.ckpt \
+    --teacher_ckpt checkpoints/dinov3_1-v_num=00-epoch=28-val_auc=0.9942.ckpt \
     --teacher_backbone vit_huge_plus_patch16_dinov3.lvd1689m \
-    --student_backbone fastvit_t8.apple_dist_in1k \
+    --student_backbone vit_small_plus_patch16_dinov3.lvd1689m \
     --batch_size 32 \
     --precision 32 \
     --image_size 224 \
