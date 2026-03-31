@@ -1,21 +1,21 @@
 #!/bin/bash
 #
-#SBATCH --job-name=dino_v3
+#SBATCH --job-name=Zenkolab
 #SBATCH --output=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
 #SBATCH --error=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
-#SBATCH --partition=prod80
+#SBATCH --partition=prod10
 
 ## GPU: nvidia_a100_1g.10gb | nvidia_a100_3g.40gb | nvidia_a100-sxm4-80gb
-#SBATCH --gres=gpu:nvidia_a100-sxm4-80gb:1
+#SBATCH --gres=gpu:nvidia_a100_1g.10gb:1
 
 ## ntasks * cpus-per-task must be in [1 : 4 * nMIG]  (nMIG=4 for prod40)
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=4
 
 ## RAM
-#SBATCH --mem=64G
+#SBATCH --mem=8G
 
 ## Max wall time
 #SBATCH --time=24:0:0
@@ -44,4 +44,4 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-uv run src/train/train.py --batch_size 32 --precision 16-mixed --image_size 448 --backbone vit_large_patch16_dinov3.lvd1689m
+uv run python -m src.test.test_checkpoint_on_datasets --checkpoint checkpoints/version_17/dinov3_1_v17-epoch=14-val_auc=0.9184.ckpt --datasets REFUGE2 G1020_test G1020_train
