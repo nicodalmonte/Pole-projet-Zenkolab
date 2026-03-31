@@ -12,7 +12,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from src.datasets import ACRIMADataset, FundusTrainValDataset, LAGDataset, ORIGADataset, REFUGE2Dataset
+from src.datasets import ACRIMADataset, FundusTrainValDataset, LAGDataset, ORIGADataset, REFUGE2Dataset, G1020Dataset
 
 
 def get_basic_transforms(image_size: int = 224) -> dict:
@@ -158,6 +158,11 @@ def main():
 
     example_single_dataset(REFUGE2Dataset, split="val", name="REFUGE2 (Val)")
     example_single_dataset(REFUGE2Dataset, split="test", name="REFUGE2 (Test)")
+
+    # G1020 Dataset
+    example_single_dataset(G1020Dataset, split="train", name="G1020 (Train)")
+    example_dataloader(G1020Dataset, split="train", name="G1020 (Train)")
+    example_single_dataset(G1020Dataset, split="test", name="G1020 (Test)")
 
     print(f"\n{'='*60}")
     print("All examples completed!")

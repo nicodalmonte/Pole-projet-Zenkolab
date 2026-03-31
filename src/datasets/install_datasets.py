@@ -27,6 +27,7 @@ DL_DATASET_DICT = {
         "commands" : [
             "kaggle datasets download sreeharims/glaucoma-dataset",
             "unzip glaucoma-dataset.zip -d .",
+            "rm glaucoma-dataset.zip",
         ]
     },
     "JRAIGS" : {
@@ -49,6 +50,16 @@ DL_DATASET_DICT = {
             "rm -rf JRAIGS/4",
             "mv JRAIGS/5/* JRAIGS/images/",
             "rm -rf JRAIGS/5",
+        ]
+    },
+    "G1020" : {
+        "type" : "cli",
+        "required" : ["kaggle"],
+        "commands" : [
+            #"kaggle datasets download kiamahmed/glaucoma-fundus-imaging-g1020-splitted",
+            #"unzip glaucoma-fundus-imaging-g1020-splitted.zip -d .",
+            #"rm glaucoma-fundus-imaging-g1020-splitted.zip",
+            "mv Images_splitted G1020",
         ]
     },
 }
@@ -82,4 +93,4 @@ def install(NAME_LIST = None, reinstall_all = True):
                 print(f"Dataset {name} not found in the dataset dictionary.")
 
 if __name__ == '__main__':
-    install(["LAG"], reinstall_all = False)
+    install(["G1020"], reinstall_all = False)

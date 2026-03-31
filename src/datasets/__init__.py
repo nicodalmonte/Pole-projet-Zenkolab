@@ -8,6 +8,7 @@ from src.datasets.LAG import LAGDataset
 from src.datasets.ORIGA import ORIGADataset
 from src.datasets.REFUGE2 import REFUGE2Dataset
 from src.datasets.JRAIGS import JRAIGSDataset
+from src.datasets.G1020 import G1020Dataset
 
 __all__ = [
     "ACRIMADataset",
@@ -16,4 +17,5 @@ __all__ = [
     "ORIGADataset",
     "REFUGE2Dataset",
     "JRAIGSDataset",
+    "G1020Dataset",
 ]
