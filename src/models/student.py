@@ -14,8 +14,25 @@ from torchmetrics.classification import (
 )
 
 class _StudentBackbone(L.LightningModule):
+    """Backbone of the student.
     
-
+    Args:
+        backbone_name: timm backbone for the student.
+        pretrained: load ImageNet pretrained weights.
+    """
+    
+    def __init__(
+        self,
+        backbone_name: str,
+        pretrained: bool,
+    ) -> None:
+        super.__init__()
+        self.backbone = timm.create_model(
+            backbone_name,
+            pretrained=pretrained,
+            num_classes=0,
+        )
+    
 
 class _StudentHead(nn.Module):
     """Small but expressive classification head.
@@ -87,7 +104,7 @@ class StudentGlaucomaDistilled(L.LightningModule):
         super().__init__()
         self.save_hyperparameters(ignore=["teacher_model"])
 
-        self.backbone = timm.create_model(
+        self.backbone = _StudentBackbone(
             backbone_name,
             pretrained=pretrained,
             num_classes=0,

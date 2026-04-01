@@ -53,7 +53,7 @@ class DinoV3_1(L.LightningModule):
 
     def __init__(
         self,
-        backbone_name: str = "vit_huge_plus_patch16_dinov3.lvd1689m",
+        backbone_name: str = "vit_small_plus_patch16_dinov3.lvd1689m",
         pretrained: bool = True,
         hidden_dim: int = 256,
         num_classes: int = 2,
