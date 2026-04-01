@@ -1,0 +1,48 @@
+#!/bin/bash
+#SBATCH --job-name=retfound_glaucoma
+#SBATCH --output=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/retfound_%j.out
+#SBATCH --error=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/retfound_%j.err
+#SBATCH --partition=prod80
+#SBATCH --gres=gpu:nvidia_a100-sxm4-80gb:1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=24:0:0
+
+set -e
+
+PROJECT=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab
+cd "$PROJECT"
+
+# Hugging Face token to download the gated RETFound weights
+export HF_TOKEN="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"
+
+if [ -f "$PROJECT/.venv/bin/activate" ]; then
+    source "$PROJECT/.venv/bin/activate"
+fi
+
+mkdir -p logs checkpoints results
+
+echo "======================================================"
+echo "  Job ID     : $SLURM_JOB_ID"
+echo "  Partition  : $SLURM_JOB_PARTITION"
+echo "  Node       : $(hostname)"
+echo "  GPU(s)     : $CUDA_VISIBLE_DEVICES"
+echo "  Start time : $(date)"
+echo "  Model      : RETFound DINOv2"
+echo "======================================================"
+
+python -u src/train/train.py \
+    --model retfound_dinov2 \
+    --data_dir data/datasets/ \
+    --max_epochs 50 \
+    --image_size 224 \
+    --batch_size 64 \
+    --lr 1e-4 \
+    --weight_decay 0.05 \
+    --num_workers 8 \
+    --unfreeze_backbone_epoch 3
+
+echo "Training done for RETFound DINOv2!"
+echo "End time : $(date)"
+echo "======================================================"

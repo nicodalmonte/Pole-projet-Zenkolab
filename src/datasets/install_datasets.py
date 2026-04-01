@@ -27,7 +27,28 @@ DL_DATASET_DICT = {
         "commands" : [
             "kaggle datasets download sreeharims/glaucoma-dataset",
             "unzip glaucoma-dataset.zip -d .",
-            "rm glaucoma-dataset.zip",
+        ]
+    },
+    "JRAIGS" : {
+        "type" : "cli",
+        "required" : ["kaggle"],
+        "commands" : [
+            "kaggle datasets download manit2022/jraigs-dataset",
+            "unzip jraigs-dataset.zip -d .",
+            "rm jraigs-dataset.zip",
+            "mv justRAIGS JRAIGS",
+            "mv JRAIGS/0/0 JRAIGS/images",
+            "rm -rf JRAIGS/0",
+            "mv JRAIGS/1/* JRAIGS/images/",
+            "rm -rf JRAIGS/1",
+            "mv JRAIGS/2/* JRAIGS/images/",
+            "rm -rf JRAIGS/2",
+            "mv JRAIGS/3/* JRAIGS/images/",
+            "rm -rf JRAIGS/3",
+            "mv JRAIGS/4/* JRAIGS/images/",
+            "rm -rf JRAIGS/4",
+            "mv JRAIGS/5/* JRAIGS/images/",
+            "rm -rf JRAIGS/5",
         ]
     },
 }
@@ -61,4 +82,4 @@ def install(NAME_LIST = None, reinstall_all = True):
                 print(f"Dataset {name} not found in the dataset dictionary.")
 
 if __name__ == '__main__':
-    install()
+    install(["LAG"], reinstall_all = False)

@@ -1,0 +1,23 @@
+artifact_path: /raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/mlruns/1/models/m-df0dd91e4bd04baeb816cbc38ae3855a/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.11.14
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.10.0+cu128
+mlflow_version: 3.10.0
+model_id: m-df0dd91e4bd04baeb816cbc38ae3855a
+model_size_bytes: 1213413671
+model_uuid: m-df0dd91e4bd04baeb816cbc38ae3855a
+prompts: null
+run_id: b0dc90bd3409476a83f56039d2e72834
+utc_time_created: '2026-03-03 21:44:03.890538'

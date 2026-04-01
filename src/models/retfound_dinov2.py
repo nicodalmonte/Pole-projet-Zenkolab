@@ -1,33 +1,30 @@
-"""DINOv3 glaucoma classification model — version 1."""
+"""RETFound DINOv2 glaucoma classification model (Lightning)."""
 
 from __future__ import annotations
+
+import json
 
 import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import lightning as L
+from huggingface_hub import hf_hub_download
 from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, BinaryF1Score, BinaryRecall, BinarySpecificity
 
 
+def _infer_timm_arch(cfg: dict) -> str:
+    """Derive a timm model name from a HuggingFace config dict."""
+    hidden = cfg.get("hidden_size", 768)
+    patch = cfg.get("patch_size", 16)
+    size = "large" if hidden >= 1024 else "base" if hidden >= 768 else "small"
+    return f"vit_{size}_patch{patch}_224"
+
+
 class _Head(nn.Module):
-    """Three-layer MLP classification head with LayerNorm.
-
-    Architecture (per layer):
-        LayerNorm -> Linear -> GELU -> (Dropout)
-    Final layer is a plain Linear projection to num_classes.
-    """
-
-    def __init__(
-        self,
-        in_features: int,
-        hidden_dim: int,
-        num_classes: int,
-        dropout: float,
-    ) -> None:
+    def __init__(self, in_features: int, num_classes: int, dropout: float) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            # Layer 1
             nn.LayerNorm(in_features),
             nn.Dropout(dropout),
             nn.Linear(in_features, num_classes),
@@ -37,22 +34,12 @@ class _Head(nn.Module):
         return self.layers(x)
 
 
-class DinoV3_1(L.LightningModule):
-    """Glaucoma binary classifier backed by a DINOv2 timm model.
-
-    Args:
-        backbone_name: timm model identifier, e.g. ``"vit_small_patch16_dinov3"``.
-        pretrained: Whether to load ImageNet-pretrained weights.
-        hidden_dim: Width of the first hidden layer of the head.
-        num_classes: Number of output classes (default 2 for binary classification).
-        dropout: Dropout probability used inside the head.
-        lr: Learning rate for AdamW.
-        weight_decay: Weight decay for AdamW.
-    """
+class RETFoundDinoV2(L.LightningModule):
+    """Glaucoma binary classifier backed by RETFound DINOv2."""
 
     def __init__(
         self,
-        backbone_name: str = "vit_huge_plus_patch16_dinov3.lvd1689m",
+        backbone_name: str = "hf_hub:YukunZhou/RETFound_dinov2_meh",
         pretrained: bool = True,
         hidden_dim: int = 256,
         num_classes: int = 2,
@@ -66,24 +53,43 @@ class DinoV3_1(L.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.backbone = timm.create_model(
-            backbone_name,
-            pretrained=pretrained,
-            num_classes=0,  # remove classifier
-            img_size=img_size,
-        )
+        if backbone_name.startswith("hf_hub:"):
+            hf_model_id = backbone_name[len("hf_hub:"):]
+            config_path = hf_hub_download(repo_id=hf_model_id, filename="config.json")
+            with open(config_path) as f:
+                cfg = json.load(f)
+            timm_arch = cfg.get("architecture") or _infer_timm_arch(cfg)
+            self.backbone = timm.create_model(
+                timm_arch,
+                pretrained=False,
+                num_classes=0,
+                img_size=img_size,
+            )
+            if pretrained:
+                weights_name = hf_model_id.split("/")[-1] + ".pth"
+                weights_path = hf_hub_download(repo_id=hf_model_id, filename=weights_name)
+                state_dict = torch.load(weights_path, map_location="cpu", weights_only=False)
+                if "model" in state_dict:
+                    state_dict = state_dict["model"]
+                missing, unexpected = self.backbone.load_state_dict(state_dict, strict=False)
+                if missing:
+                    print(f"[RETFoundDinoV2] Missing keys: {len(missing)}")
+                if unexpected:
+                    print(f"[RETFoundDinoV2] Unexpected keys: {len(unexpected)}")
+        else:
+            self.backbone = timm.create_model(
+                backbone_name,
+                pretrained=pretrained,
+                num_classes=0,
+                img_size=img_size,
+            )
         embed_dim: int = self.backbone.num_features
 
         self._backbone_is_frozen = False
         if unfreeze_backbone_epoch > 0:
             self._freeze_backbone()
 
-        self.head = _Head(
-            in_features=embed_dim,
-            hidden_dim=hidden_dim,
-            num_classes=num_classes,
-            dropout=dropout,
-        )
+        self.head = _Head(embed_dim, num_classes, dropout)
 
         weight = torch.tensor(class_weights, dtype=torch.float32) if class_weights is not None else None
         self.register_buffer("loss_weight", weight)
@@ -110,17 +116,9 @@ class DinoV3_1(L.LightningModule):
             p.requires_grad = True
         self._backbone_is_frozen = False
 
-    # ------------------------------------------------------------------
-    # Forward
-    # ------------------------------------------------------------------
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = self.backbone(x)
         return self.head(features)
-
-    # ------------------------------------------------------------------
-    # Steps
-    # ------------------------------------------------------------------
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         logits = self(batch["image"])
@@ -128,7 +126,6 @@ class DinoV3_1(L.LightningModule):
 
         probs = torch.softmax(logits, dim=-1)[:, 1]
         self.train_auc.update(probs, batch["label"])
-
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
@@ -154,7 +151,6 @@ class DinoV3_1(L.LightningModule):
         self.val_f1.update(preds, batch["label"])
         self.val_sensitivity.update(preds, batch["label"])
         self.val_specificity.update(preds, batch["label"])
-
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
 
     def on_validation_epoch_end(self) -> None:
@@ -190,10 +186,6 @@ class DinoV3_1(L.LightningModule):
         self.test_f1.reset()
         self.test_sensitivity.reset()
         self.test_specificity.reset()
-
-    # ------------------------------------------------------------------
-    # Optimiser
-    # ------------------------------------------------------------------
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(

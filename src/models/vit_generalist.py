@@ -1,4 +1,4 @@
-"""DINOv3 glaucoma classification model — version 1."""
+"""Generalist ViT glaucoma classification model (Lightning)."""
 
 from __future__ import annotations
 
@@ -11,23 +11,9 @@ from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, BinaryF1Sco
 
 
 class _Head(nn.Module):
-    """Three-layer MLP classification head with LayerNorm.
-
-    Architecture (per layer):
-        LayerNorm -> Linear -> GELU -> (Dropout)
-    Final layer is a plain Linear projection to num_classes.
-    """
-
-    def __init__(
-        self,
-        in_features: int,
-        hidden_dim: int,
-        num_classes: int,
-        dropout: float,
-    ) -> None:
+    def __init__(self, in_features: int, num_classes: int, dropout: float) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            # Layer 1
             nn.LayerNorm(in_features),
             nn.Dropout(dropout),
             nn.Linear(in_features, num_classes),
@@ -37,22 +23,12 @@ class _Head(nn.Module):
         return self.layers(x)
 
 
-class DinoV3_1(L.LightningModule):
-    """Glaucoma binary classifier backed by a DINOv2 timm model.
-
-    Args:
-        backbone_name: timm model identifier, e.g. ``"vit_small_patch16_dinov3"``.
-        pretrained: Whether to load ImageNet-pretrained weights.
-        hidden_dim: Width of the first hidden layer of the head.
-        num_classes: Number of output classes (default 2 for binary classification).
-        dropout: Dropout probability used inside the head.
-        lr: Learning rate for AdamW.
-        weight_decay: Weight decay for AdamW.
-    """
+class ViTGeneralist(L.LightningModule):
+    """Glaucoma binary classifier backed by a generalist ViT."""
 
     def __init__(
         self,
-        backbone_name: str = "vit_huge_plus_patch16_dinov3.lvd1689m",
+        backbone_name: str = "vit_large_patch16_224.augreg_in21k_ft_in1k",
         pretrained: bool = True,
         hidden_dim: int = 256,
         num_classes: int = 2,
@@ -69,7 +45,8 @@ class DinoV3_1(L.LightningModule):
         self.backbone = timm.create_model(
             backbone_name,
             pretrained=pretrained,
-            num_classes=0,  # remove classifier
+            num_classes=0,
+            global_pool="avg",
             img_size=img_size,
         )
         embed_dim: int = self.backbone.num_features
@@ -78,12 +55,7 @@ class DinoV3_1(L.LightningModule):
         if unfreeze_backbone_epoch > 0:
             self._freeze_backbone()
 
-        self.head = _Head(
-            in_features=embed_dim,
-            hidden_dim=hidden_dim,
-            num_classes=num_classes,
-            dropout=dropout,
-        )
+        self.head = _Head(embed_dim, num_classes, dropout)
 
         weight = torch.tensor(class_weights, dtype=torch.float32) if class_weights is not None else None
         self.register_buffer("loss_weight", weight)
@@ -110,17 +82,9 @@ class DinoV3_1(L.LightningModule):
             p.requires_grad = True
         self._backbone_is_frozen = False
 
-    # ------------------------------------------------------------------
-    # Forward
-    # ------------------------------------------------------------------
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         features = self.backbone(x)
         return self.head(features)
-
-    # ------------------------------------------------------------------
-    # Steps
-    # ------------------------------------------------------------------
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         logits = self(batch["image"])
@@ -128,7 +92,6 @@ class DinoV3_1(L.LightningModule):
 
         probs = torch.softmax(logits, dim=-1)[:, 1]
         self.train_auc.update(probs, batch["label"])
-
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, sync_dist=True)
         return loss
 
@@ -154,7 +117,6 @@ class DinoV3_1(L.LightningModule):
         self.val_f1.update(preds, batch["label"])
         self.val_sensitivity.update(preds, batch["label"])
         self.val_specificity.update(preds, batch["label"])
-
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
 
     def on_validation_epoch_end(self) -> None:
@@ -190,10 +152,6 @@ class DinoV3_1(L.LightningModule):
         self.test_f1.reset()
         self.test_sensitivity.reset()
         self.test_specificity.reset()
-
-    # ------------------------------------------------------------------
-    # Optimiser
-    # ------------------------------------------------------------------
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
