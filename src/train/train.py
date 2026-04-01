@@ -156,7 +156,7 @@ def build_dataloaders(
     image_size: int = 896,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
-    target_train_size = 8_000
+    target_train_size = 32_000
 
     ## --- Train ---
     #train_ds = ConcatDataset([
