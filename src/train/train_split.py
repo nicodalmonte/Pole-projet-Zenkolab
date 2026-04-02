@@ -37,6 +37,7 @@ from src.datasets import (
     LAGDataset,
     ORIGADataset,
     REFUGE2Dataset,
+    RIMONEDataset,
 )
 from src.datasets.augmentations import AUGMENTATION_TRANSFORMS
 from src.models.dino_v3_1 import DinoV3_1
@@ -102,6 +103,8 @@ def _label_at(dataset: Dataset, index: int) -> int:
         return int(base_dataset.samples[base_index][1])
     if isinstance(base_dataset, REFUGE2Dataset):
         return 1 if base_dataset.image_paths[base_index].name.startswith("g") else 0
+    if isinstance(base_dataset, RIMONEDataset):
+        return 1 if int(base_dataset.labels[base_index]) == 1 else 0
 
     raise TypeError(f"Unsupported dataset type for label lookup: {type(base_dataset).__name__}")
 
@@ -138,7 +141,9 @@ def _count_glaucoma(dataset: Dataset) -> tuple[int, int]:
     if isinstance(dataset, REFUGE2Dataset):
         glaucoma = sum(1 for path in dataset.image_paths if path.name.startswith("g"))
         return glaucoma, len(dataset)
-
+    if isinstance(dataset, RIMONEDataset):
+        glaucoma = sum(int(label) for label in dataset.labels)
+        return glaucoma, len(dataset)
     raise TypeError(f"Unsupported dataset type for counting: {type(dataset).__name__}")
 
 
@@ -239,6 +244,10 @@ def build_combined_dataset(data_dir: str) -> ConcatDataset:
         _set_source_name(LAGDataset(data_dir=data_dir, split="validation", transforms=None), "LAG(validation)"),
         _set_source_name(LAGDataset(data_dir=data_dir, split="test", transforms=None), "LAG(test)"),
         _set_source_name(ORIGADataset(data_dir=data_dir, transforms=None), "ORIGA(all)"),
+        _set_source_name(RIMONEDataset(data_dir=data_dir, split="train", partition="hospital", transforms=None), "RIM-ONE(hospital_train)"),
+        _set_source_name(RIMONEDataset(data_dir=data_dir, split="test", partition="hospital", transforms=None), "RIM-ONE(hospital_test)"),
+        _set_source_name(RIMONEDataset(data_dir=data_dir, split="train", partition="random", transforms=None), "RIM-ONE(random_train)"),
+        _set_source_name(RIMONEDataset(data_dir=data_dir, split="test", partition="random", transforms=None), "RIM-ONE(random_test)"),
     ]
     return ConcatDataset(datasets)
 
