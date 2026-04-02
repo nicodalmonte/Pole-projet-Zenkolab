@@ -58,6 +58,7 @@ DEFAULT_SPLITS = {
     "REFUGE2": "train",
     "G1020_TEST": "test",
     "G1020_TRAIN": "train",
+    "ACRIMA" : "test",
 }
 
 MODEL_REGISTRY = {

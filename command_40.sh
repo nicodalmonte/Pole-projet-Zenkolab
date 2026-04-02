@@ -46,4 +46,10 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 ##timm/vit_huge_plus_patch16_dinov3.lvd1689m
 ##timm/vit_large_patch16_dinov3.lvd1689m
-uv run src/train/train.py --batch_size 32 --precision 32 --image_size 448 --backbone vit_huge_plus_patch16_dinov3.lvd1689m --class_weights 0.5 15.0 
+uv run python -m src.train.train_split --batch_size 32 --precision 16-mixed --image_size 448 --backbone vit_large_patch16_dinov3.lvd1689m --class_weights 0.5 15.0 
+
+echo "======================================================"
+echo "  Job ID     : $SLURM_JOB_ID"
+echo "  Node       : $(hostname)"
+echo "  End time   : $(date)"
+echo "======================================================"

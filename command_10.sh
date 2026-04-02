@@ -44,4 +44,5 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-uv run python -m src.test.test_checkpoint_on_datasets --checkpoint checkpoints/version_17/dinov3_1_v17-epoch=14-val_auc=0.9184.ckpt --datasets REFUGE2 G1020_test G1020_train
+echo "c"
+uv run python -m src.train.train_split --batch_size 32 --precision 16-mixed --image_size 448 --backbone vit_large_patch16_dinov3.lvd1689m
