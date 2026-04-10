@@ -62,6 +62,24 @@ DL_DATASET_DICT = {
             "mv Images_splitted G1020",
         ]
     },
+    "RIM-ONE" : {
+        "type" : "cli",
+        "required" : ["kaggle"],
+        "commands" : [
+            "kaggle datasets download orvile/rim-one-retinal-dataset-for-assessing-glaucoma",
+            "unzip rim-one-retinal-dataset-for-assessing-glaucoma.zip -d RIM-ONE",
+            "rm rim-one-retinal-dataset-for-assessing-glaucoma.zip",
+        ]
+    },
+    "AIROGSLight" : {
+        "type" : "cli",
+        "required" : ["kaggle"],
+        "commands" : [
+            "kaggle datasets download deathtrooper/glaucoma-dataset-eyepacs-airogs-light-v2",
+            "unzip glaucoma-dataset-eyepacs-airogs-light-v2.zip -d AIROGSLight",
+            "rm glaucoma-dataset-eyepacs-airogs-light-v2.zip",
+        ]
+    },
 }
 
 
