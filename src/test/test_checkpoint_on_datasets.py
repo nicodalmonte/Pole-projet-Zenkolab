@@ -58,11 +58,23 @@ DEFAULT_SPLITS = {
     "REFUGE2": "train",
     "G1020_TEST": "test",
     "G1020_TRAIN": "train",
-    "ACRIMA" : "test",
+    "ACRIMA": "test",
+    "ORIGA": "train",
+    "LAG": "test",
+    "JRAIGS": "train",
+    "FUNDUS": "validation",
 }
 
 MODEL_REGISTRY = {
-    "dinov3_1": "src.models.dino_v3_1:DinoV3_1",
+    "dinov3_1":         "src.models.dino_v3_1:DinoV3_1",
+    "eva02_large":      "src.models.eva02_large:EVA02Large",
+    "dinov3_large":     "src.models.dino_v3_1:DinoV3_1",
+    "dinov3_huge_plus": "src.models.dino_v3_1:DinoV3_1",
+}
+
+# Models that need a custom load path (not load_from_checkpoint)
+_CUSTOM_LOADERS = {
+    "distillation_student": "src.distillation.student_eval:StudentEval",
 }
 
 
@@ -79,8 +91,9 @@ def parse_args() -> argparse.Namespace:
         "--model",
         default="dinov3_1",
         help=(
-            "Model to load. Use a built-in alias (dinov3_1) or a full "
-            "'module.path:ClassName' value for custom models."
+            "Model alias: "
+            + ", ".join(sorted(MODEL_REGISTRY) + sorted(_CUSTOM_LOADERS))
+            + ". Or a full 'module.path:ClassName' value."
         ),
     )
     parser.add_argument(
@@ -97,6 +110,8 @@ def parse_args() -> argparse.Namespace:
             "Example: REFUGE2:test LAG:validation G1020:test"
         ),
     )
+    parser.add_argument("--threshold", type=float, default=0.5,
+                        help="Decision threshold for binary predictions (default 0.5).")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument(
@@ -120,7 +135,7 @@ def parse_args() -> argparse.Namespace:
 def resolve_model_class(model_spec: str):
     spec = MODEL_REGISTRY.get(model_spec.lower(), model_spec)
     if ":" not in spec:
-        valid = ", ".join(sorted(MODEL_REGISTRY))
+        valid = ", ".join(sorted(MODEL_REGISTRY) + sorted(_CUSTOM_LOADERS))
         raise ValueError(
             f"Invalid --model '{model_spec}'. Use one of [{valid}] "
             "or provide 'module.path:ClassName'."
@@ -179,11 +194,23 @@ def main() -> None:
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
-    model_class = resolve_model_class(args.model)
-    model = model_class.load_from_checkpoint(str(ckpt_path), map_location="cpu")
+    model_key = args.model.lower()
+
+    if model_key in _CUSTOM_LOADERS:
+        # Custom loader: extract only the relevant weights (e.g. student-only)
+        spec = _CUSTOM_LOADERS[model_key]
+        module_name, class_name = spec.split(":", 1)
+        import importlib
+        module = importlib.import_module(module_name)
+        model_class = getattr(module, class_name)
+        model = model_class.from_distillation_ckpt(str(ckpt_path))
+        model.threshold = args.threshold
+    else:
+        model_class = resolve_model_class(args.model)
+        model = model_class.load_from_checkpoint(str(ckpt_path), map_location="cpu")
 
     backbone_name = str(getattr(model.hparams, "backbone_name"))
-    image_size = int(getattr(model.hparams, "img_size"))
+    image_size    = int(getattr(model.hparams, "img_size"))
     _, eval_transform = build_transforms(backbone_name=backbone_name, image_size=image_size)
 
     trainer = L.Trainer(

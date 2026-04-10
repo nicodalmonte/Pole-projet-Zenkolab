@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH --job-name=teacher_dino_huge
+#SBATCH --output=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/teacher_dinov3_huge_%j.out
+#SBATCH --error=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/teacher_dinov3_huge_%j.err
+#SBATCH --partition=prod40
+#SBATCH --gres=gpu:nvidia_a100_3g.40gb:1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=48G
+#SBATCH --time=24:0:0
+
+set -e
+
+PROJECT=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab
+cd "$PROJECT"
+
+[ -f "$PROJECT/.venv/bin/activate" ] && source "$PROJECT/.venv/bin/activate"
+
+mkdir -p logs checkpoints/teachers/dinov3_huge_plus results
+
+echo "======================================================"
+echo "  Job ID     : $SLURM_JOB_ID"
+echo "  Node       : $(hostname)"
+echo "  GPU        : $CUDA_VISIBLE_DEVICES"
+echo "  Start time : $(date)"
+echo "  Model      : Teacher — DINOv3-Huge+ (448px, patch16)"
+echo "======================================================"
+
+python -u src/distillation/train_teacher.py \
+    --model dinov3_huge_plus \
+    --data_dir data/datasets \
+    --batch_size 4 \
+    --image_size 448 \
+    --max_epochs 50 \
+    --lr 1e-4 \
+    --weight_decay 0.05 \
+    --num_workers 4 \
+    --unfreeze_backbone_epoch 3 \
+    --precision 16-mixed \
+    --checkpoint_dir checkpoints/teachers
+
+echo "======================================================"
+echo "  DINOv3-Huge+ teacher done."
+echo "  End time : $(date)"
+echo "======================================================"

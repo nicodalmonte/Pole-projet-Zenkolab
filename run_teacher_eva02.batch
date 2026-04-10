@@ -1,0 +1,48 @@
+#!/bin/bash
+#SBATCH --job-name=teacher_eva02
+#SBATCH --output=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/teacher_eva02_%j.out
+#SBATCH --error=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/teacher_eva02_%j.err
+#SBATCH --partition=prod10
+#SBATCH --gres=gpu:nvidia_a100_1g.10gb:1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=15G
+#SBATCH --time=24:0:0
+
+set -e
+
+PROJECT=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab
+cd "$PROJECT"
+
+[ -f "$PROJECT/.venv/bin/activate" ] && source "$PROJECT/.venv/bin/activate"
+
+mkdir -p logs checkpoints/teachers/eva02_large results
+
+echo "======================================================"
+echo "  Job ID     : $SLURM_JOB_ID"
+echo "  Node       : $(hostname)"
+echo "  GPU        : $CUDA_VISIBLE_DEVICES"
+echo "  Start time : $(date)"
+echo "  Model      : Teacher — EVA-02 Large (448px, patch14)"
+echo "======================================================"
+
+python -u src/distillation/train_teacher.py \
+    --model eva02_large \
+    --data_dir data/datasets \
+    --batch_size 2 \
+    --image_size 448 \
+    --max_epochs 50 \
+    --lr 1e-4 \
+    --weight_decay 0.05 \
+    --num_workers 2 \
+    --unfreeze_backbone_epoch 3 \
+    --focal_gamma 2.0 \
+    --label_smoothing 0.1 \
+    --no_class_weights \
+    --precision 16-mixed \
+    --checkpoint_dir checkpoints/teachers
+
+echo "======================================================"
+echo "  EVA02-Large teacher done."
+echo "  End time : $(date)"
+echo "======================================================"
