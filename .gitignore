@@ -148,3 +148,5 @@ papers/
 *~
 *.swp
 .pytest_cache/
+*.md
+*.sh

@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 #SBATCH --job-name=Zenkolab
-#SBATCH --output=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
-#SBATCH --error=/raid/home/students/damon_mat/P-le-Projet-Zenkolab/logs/train_%j.out
+#SBATCH --output=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/train_%j.out
+#SBATCH --error=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/train_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
 #SBATCH --partition=prod10
@@ -24,7 +24,7 @@
 # Setup
 # ---------------------------------------------------------------------------
 
-PROJECT=/raid/home/students/damon_mat/P-le-Projet-Zenkolab
+PROJECT=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab
 
 # Activate virtual environment
 #I use uv
@@ -44,4 +44,6 @@ echo "======================================================"
 # ---------------------------------------------------------------------------
 # Training
 # ---------------------------------------------------------------------------
-uv run python -m src.test.test_checkpoint_on_datasets --checkpoint checkpoints/version_17/dinov3_1_v17-epoch=14-val_auc=0.9184.ckpt --datasets REFUGE2 G1020_test G1020_train
+uv run python src/test/test_checkpoint_on_datasets.py \
+  --checkpoint checkpoints/version_0/last.ckpt \
+  --datasets REFUGE2

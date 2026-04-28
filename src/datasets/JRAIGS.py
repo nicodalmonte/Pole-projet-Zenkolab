@@ -36,7 +36,7 @@ class JRAIGSDataset(Dataset):
     ) -> None:
         self.data_dir = Path(data_dir) / "JRAIGS"
         self.image_dir = self.data_dir / "images"
-        self.csv_file = self.data_dir / "filtered_labels.csv"
+        self.csv_file = self.data_dir / "JustRAIGS_Train_labels.csv"
         self.transforms = transforms
 
         if not self.image_dir.exists():
@@ -50,7 +50,7 @@ class JRAIGSDataset(Dataset):
 
         try:
             with open(self.csv_file, "r") as f:
-                df = pd.read_csv(self.csv_file)
+                df = pd.read_csv(self.csv_file, sep=";")
                 for _, row in df.iterrows():
                     eye_id = row["Eye ID"]
                     final_label = row["Final Label"]

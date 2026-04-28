@@ -20,6 +20,14 @@ echo "Node       : $(hostname)"
 echo "GPU(s)     : $CUDA_VISIBLE_DEVICES"
 echo "Start time : $(date)"
 
-python -m src.train
+python src/train/train.py \
+  --dataset JRAIGS \
+  --backbone vit_large_patch16_dinov3.lvd1689m \
+  --image_size 896 \
+  --batch_size 32 \
+  --precision 16-mixed \
+  --max_epochs 50 \
+  --lr 1e-4 \
+  --unfreeze_backbone_epoch 3
 
 echo "End time : $(date)"
