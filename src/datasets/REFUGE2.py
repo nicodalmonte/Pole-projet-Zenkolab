@@ -16,9 +16,15 @@ class REFUGE2Dataset(Dataset):
     Images are organized in train/, val/, and test/ folders with images/subdirectories.
     Labels are determined by file prefix: "g" for glaucoma, "n" for non-glaucoma.
 
+    WARNING: Only the "train" split carries encoded labels (g*/n* prefixes).
+    The "val" (V*.jpg) and "test" (T*.jpg) splits are the original REFUGE2
+    challenge evaluation sets whose ground-truth was never released publicly.
+    Using val/test will silently label ALL images as non-glaucoma (label=0),
+    making metrics meaningless. Use split="train" for evaluation.
+
     Args:
         data_dir: Path to the root data directory containing REFUGE2 folder.
-        split: Dataset split, one of "train", "val", or "test".
+        split: Dataset split. Only "train" has reliable labels.
         transforms: Optional torchvision transforms to apply to images.
     """
 
@@ -36,8 +42,20 @@ class REFUGE2Dataset(Dataset):
         if split_lower == "train":
             self.image_dir = self.data_dir / "train" / "images"
         elif split_lower in ("val", "validation"):
+            import warnings
+            warnings.warn(
+                "REFUGE2 val split (V*.jpg) has no public ground-truth labels — "
+                "all images will be labelled 0. Use split='train' for evaluation.",
+                UserWarning, stacklevel=2,
+            )
             self.image_dir = self.data_dir / "val" / "images"
         elif split_lower == "test":
+            import warnings
+            warnings.warn(
+                "REFUGE2 test split (T*.jpg) has no public ground-truth labels — "
+                "all images will be labelled 0. Use split='train' for evaluation.",
+                UserWarning, stacklevel=2,
+            )
             self.image_dir = self.data_dir / "test" / "images"
         else:
             raise ValueError(
