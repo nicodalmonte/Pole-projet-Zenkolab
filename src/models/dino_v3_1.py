@@ -78,6 +78,8 @@ class DinoV3_1(L.LightningModule):
         self._backbone_is_frozen = False
         if unfreeze_backbone_epoch > 0:
             self._freeze_backbone()
+        else:
+            self._unfreeze_backbone()
 
         self.head = _Head(
             in_features=embed_dim,

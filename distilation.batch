@@ -5,10 +5,10 @@
 #SBATCH --error=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab/logs/distill_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
-#SBATCH --partition=prod40
+#SBATCH --partition=prod80
 
 ## GPU: nvidia_a100_1g.10gb | nvidia_a100_3g.40gb | nvidia_a100-sxm4-80gb
-#SBATCH --gres=gpu:nvidia_a100_3g.40gb
+#SBATCH --gres=gpu:nvidia_a100-sxm4-80gb:1
 
 ## ntasks * cpus-per-task must be in [1 : 4 * nMIG]  (nMIG=4 for prod40)
 #SBATCH --ntasks=1
@@ -25,7 +25,7 @@
 # ---------------------------------------------------------------------------
 
 PROJECT=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab
-TEACHER_CKPT=$PROJECT/checkpoints/dinov3_1-v_num=00-epoch=39-val_auc=0.9924.ckpt
+TEACHER_CKPT=$PROJECT/checkpoints/version_9/dinov3_1_v9-epoch=14-val_auc=0.9271.ckpt
 
 cd "$PROJECT"
 
@@ -50,18 +50,15 @@ fi
 
 uv run src/distilation/distilation.py \
     --data_dir data/datasets \
-    --teacher_ckpt checkpoints/dinov3_1-v_num=00-epoch=28-val_auc=0.9942.ckpt \
+    --teacher_ckpt checkpoints/version_9/dinov3_1_v9-epoch=14-val_auc=0.9271.ckpt \
     --teacher_backbone vit_huge_plus_patch16_dinov3.lvd1689m \
     --student_backbone vit_small_plus_patch16_dinov3.lvd1689m \
     --batch_size 32 \
     --precision 32 \
     --image_size 224 \
-    --lr 3e-4 \
-    --weight_decay 1e-4 \
-    --kd_alpha 0.7 \
+    --kd_alpha 0.15 \
     --kd_temperature 4.0 \
     --max_epochs 50 \
-    --num_workers 8 \
     --checkpoint_dir checkpoints_student
 
 echo "======================================================"

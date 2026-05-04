@@ -239,7 +239,7 @@ def build_dataloaders(
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train DinoV3_1 glaucoma classifier")
     p.add_argument("--data_dir", default="data/datasets")
-    p.add_argument("--backbone", default="vit_huge_plus_patch16_dinov3.lvd1689m")
+    p.add_argument("--backbone", default="vit_small_plus_patch16_dinov3.lvd1689m")
     p.add_argument("--pretrained", action="store_true", default=True)
     p.add_argument("--hidden_dim", type=int, default=256)
     p.add_argument("--dropout", type=float, default=0.2)

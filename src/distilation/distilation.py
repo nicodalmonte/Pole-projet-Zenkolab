@@ -11,7 +11,7 @@ Notes
 - The teacher is loaded from a trained checkpoint and kept frozen in eval mode.
 - Only the student is trained.
 - The student backbone is NOT frozen.
-- The student is created with pretrained=False, i.e. random/default init.
+- The student is created with pretrained=True.
 """
 
 from __future__ import annotations
@@ -25,11 +25,12 @@ import argparse
 
 import timm
 import torch
-from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.data import ConcatDataset, DataLoader, Subset
 import lightning as L
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.callbacks import RichModelSummary, RichProgressBar
 from lightning.pytorch.loggers import CSVLogger
+from torchvision import transforms
 
 from src.datasets import (
     ACRIMADataset,
@@ -37,9 +38,13 @@ from src.datasets import (
     LAGDataset,
     ORIGADataset,
     REFUGE2Dataset,
+    JRAIGSDataset,
 )
 from src.models.dino_v3_1 import DinoV3_1
 from src.models.student import StudentGlaucomaDistilled
+
+from src.datasets.augmentations import AUGMENTATION_TRANSFORMS
+
 
 
 # ---------------------------------------------------------------------------
@@ -52,17 +57,35 @@ def build_transforms(backbone_name: str, image_size: int = 896):
         timm.create_model(backbone_name, pretrained=False, num_classes=0)
     )
     data_cfg["input_size"] = (3, image_size, image_size)
-    train_tf = timm.data.create_transform(**data_cfg, is_training=True)
-    eval_tf = timm.data.create_transform(**data_cfg, is_training=False)
-    return train_tf, eval_tf
-
+    
+    # Build the timm transforms
+    timm_train_tf = timm.data.create_transform(**data_cfg, is_training=True)
+    timm_eval_tf = timm.data.create_transform(**data_cfg, is_training=False)
+    
+    # Compose timm transforms with augmentations for training
+    train_tf = transforms.Compose([
+        AUGMENTATION_TRANSFORMS,
+        timm_train_tf,
+    ])
+    
+    return train_tf, timm_eval_tf
 
 # ---------------------------------------------------------------------------
 # Data helpers
 # ---------------------------------------------------------------------------
 
 def _count_glaucoma(ds) -> tuple[int, int]:
-    """Return (n_glaucoma, total) by inspecting stored metadata only."""
+    """Return (n_glaucoma, total) by inspecting stored paths/labels.
+
+    No images are opened — only filename metadata / label lists are read.
+    """
+    if isinstance(ds, Subset):
+        base_ds = ds.dataset
+        if hasattr(base_ds, "samples"):
+            g = sum(base_ds.samples[i][1] for i in ds.indices)
+            return g, len(ds)
+        return 0, len(ds)
+
     if isinstance(ds, ACRIMADataset):
         g = sum(1 for p in ds.image_paths if "_g_" in p.name)
     elif isinstance(ds, LAGDataset):
@@ -73,9 +96,12 @@ def _count_glaucoma(ds) -> tuple[int, int]:
         g = sum(1 for p in ds.image_paths if p.name.startswith("g"))
     elif isinstance(ds, FundusTrainValDataset):
         g = sum(ds.labels)
+    elif isinstance(ds, JRAIGSDataset):
+        g = sum(lbl for _, lbl in ds.samples)
     else:
         return 0, len(ds)
     return g, len(ds)
+
 
 
 def print_split_info(split_name: str, ds) -> None:
@@ -139,23 +165,56 @@ def build_dataloaders(
     image_size: int = 896,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
+    target_train_size = 8_000
 
+    ## --- Train ---
+    #train_ds = ConcatDataset([
+    #    ACRIMADataset(data_dir=data_dir, split="train", transforms=train_tf),
+    #    LAGDataset(data_dir=data_dir, split="train", transforms=train_tf),
+    #    ORIGADataset(data_dir=data_dir, split="train", transforms=train_tf),
+    #])
+#
+    ## --- Val ---
+    #val_ds = ConcatDataset([
+    #    FundusTrainValDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
+    #    LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
+    #])
+#
+    ## --- Test (REFUGE2, all three splits) ---
+    #test_ds = ConcatDataset([
+    #    REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
+    #])
+
+    jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
+    glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
+    non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
+
+    remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
+    if remaining_slots >= len(non_glaucoma_indices):
+        selected_non_glaucoma = non_glaucoma_indices
+    else:
+        g = torch.Generator().manual_seed(42)
+        perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
+        selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+
+    selected_indices = glaucoma_indices + selected_non_glaucoma
     train_ds = ConcatDataset([
-        ACRIMADataset(data_dir=data_dir, split="train", transforms=train_tf),
-        FundusTrainValDataset(data_dir=data_dir, split="train", transforms=train_tf),
-        LAGDataset(data_dir=data_dir, split="train", transforms=train_tf),
-        ORIGADataset(data_dir=data_dir, split="train", transforms=train_tf),
+        Subset(jraigs_train, selected_indices),
     ])
+    #traind_ds = jraigs_train ## if I want all to use all the images
+    
 
     val_ds = ConcatDataset([
-        FundusTrainValDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
-        LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
+        ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf)
     ])
 
     test_ds = ConcatDataset([
-        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),        
     ])
 
+    # -- Print dataset details before building DataLoaders --
     print_split_info("TRAIN", train_ds)
     print_split_info("VAL  ", val_ds)
     print_split_info("TEST (REFUGE2)", test_ds)
@@ -163,28 +222,16 @@ def build_dataloaders(
     pin = torch.cuda.is_available()
 
     train_dl = DataLoader(
-        train_ds,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin,
-        persistent_workers=num_workers > 0,
+        train_ds, batch_size=batch_size, shuffle=True,
+        num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0,
     )
     val_dl = DataLoader(
-        val_ds,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin,
-        persistent_workers=num_workers > 0,
+        val_ds, batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0,
     )
     test_dl = DataLoader(
-        test_ds,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin,
-        persistent_workers=num_workers > 0,
+        test_ds, batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0,
     )
 
     print(f"Train samples : {len(train_ds)}")
@@ -219,24 +266,24 @@ def parse_args() -> argparse.Namespace:
     # Student
     p.add_argument(
         "--student_backbone",
-        default="fastvit_t8.apple_dist_in1k",
+        default="vit_small_plus_patch16_dinov3.lvd1689m",
         help="Student timm backbone.",
     )
     p.add_argument(
         "--student_pretrained",
         action="store_true",
-        default=False,
+        default=True,
         help="Use pretrained weights for the student. Default is False.",
     )
     p.add_argument("--hidden_dim", type=int, default=256)
     p.add_argument("--dropout", type=float, default=0.2)
 
     # Optimization
-    p.add_argument("--lr", type=float, default=3e-4)
+    p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--weight_decay", type=float, default=1e-4)
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--max_epochs", type=int, default=50)
-    p.add_argument("--num_workers", type=int, default=8)
+    p.add_argument("--num_workers", type=int, default=16)
 
     # Distillation
     p.add_argument("--kd_alpha", type=float, default=0.7)
@@ -274,7 +321,6 @@ def main() -> None:
     args = parse_args()
 
     L.seed_everything(42, workers=True)
-    torch.set_float32_matmul_precision("medium")
 
     train_dl, val_dl, test_dl = build_dataloaders(
         data_dir=args.data_dir,
@@ -294,20 +340,14 @@ def main() -> None:
         f"glaucoma: {class_weights[1]:.4f}"
     )
 
-    # ---------------------------------------------------------
-    # Load trained teacher
-    # ---------------------------------------------------------
     teacher = DinoV3_1.load_from_checkpoint(args.teacher_ckpt)
     teacher.eval()
     for p in teacher.parameters():
         p.requires_grad = False
 
-    # ---------------------------------------------------------
-    # Student
-    # ---------------------------------------------------------
     student = StudentGlaucomaDistilled(
         backbone_name=args.student_backbone,
-        pretrained=args.student_pretrained,   # default False
+        pretrained=args.student_pretrained,   # default True
         hidden_dim=args.hidden_dim,
         num_classes=2,
         dropout=args.dropout,
