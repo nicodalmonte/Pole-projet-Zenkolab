@@ -27,6 +27,13 @@ NON_GLAUCOMA_LABELS = {
     "NO_GLAUCOMA",
 }
 
+GLAUCOMA_LABELS = {
+    "RG",
+    "1",
+    "POSITIVE",
+    "GLAUCOMA",
+}
+
 LABEL_COLUMN_CANDIDATES = [
     "Final Label",
     "label",
@@ -96,6 +103,32 @@ def build_non_glaucoma_subset(df: pd.DataFrame, output_root: Path) -> int:
     out_dir = output_root / "non_glaucoma"
     n = write_subset_with_images(subset, out_dir)
     print(f"  non_glaucoma: {n} rows -> {out_dir}")
+    return n
+
+
+def build_glaucoma_subset(df: pd.DataFrame, output_root: Path) -> int:
+    label_col = next((col for col in LABEL_COLUMN_CANDIDATES if col in df.columns), None)
+    if label_col is None:
+        print("  [SKIP] label column not found for glaucoma subset")
+        return 0
+
+    out_dir = output_root / "glaucoma"
+    existing_csv = out_dir / "labels.csv"
+    if existing_csv.exists():
+        print(f"  glaucoma already exists, skipped: {existing_csv}")
+        return 0
+
+    label_values = df[label_col].astype(str).str.strip().str.upper()
+
+    # Prefer explicit glaucoma labels; fallback to known non-glaucoma complement.
+    glaucoma_mask = label_values.isin(GLAUCOMA_LABELS)
+    if not glaucoma_mask.any():
+        glaucoma_mask = label_values.ne("") & ~label_values.isin(NON_GLAUCOMA_LABELS)
+
+    subset = df[glaucoma_mask].copy()
+
+    n = write_subset_with_images(subset, out_dir)
+    print(f"  glaucoma: {n} rows -> {out_dir}")
     return n
 
 
@@ -187,9 +220,10 @@ def main() -> None:
         n = build_subset(df, char, output_dir)
         print(f"  {char}: {n} rows -> {output_dir}")
 
+    build_glaucoma_subset(df, output_root)
     build_non_glaucoma_subset(df, output_root)
 
-    build_brightness_subsets(df, output_root)
+    # build_brightness_subsets(df, output_root)
     build_color_subsets(df, output_root)
 
     print(f"\nAll subsets saved under {output_root}")

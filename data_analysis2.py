@@ -10,6 +10,7 @@ from PIL import Image, UnidentifiedImageError
 
 
 VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+JRAIGS_DEFAULT_PATH = Path("datasets") / "manit2022__jraigs-dataset"
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,6 +26,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("outputs") / "folder_eda",
         help="Directory where CSV and plots are saved",
+    )
+    parser.add_argument(
+        "--jraigs",
+        action="store_true",
+        help="Use datasets/manit2022__jraigs-dataset as input folder",
     )
     return parser.parse_args()
 
@@ -126,7 +132,7 @@ def save_plots(df: pd.DataFrame, outdir: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    folder = args.folder.resolve()
+    folder = (JRAIGS_DEFAULT_PATH if args.jraigs else args.folder).resolve()
     outdir = args.outdir.resolve()
 
     if not folder.exists() or not folder.is_dir():
