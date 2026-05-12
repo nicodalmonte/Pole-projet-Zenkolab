@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+#SBATCH --job-name=distil_dual
+#SBATCH --output=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/distil_dual_%j.out
+#SBATCH --error=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/distil_dual_%j.out
+
+## Partition: prod10 | prod20 | prod40 | prod80
+## 80 GB needed: three models in VRAM simultaneously (EVA large at 448 px + DINO + student)
+#SBATCH --partition=prod80
+
+## GPU: nvidia_a100_1g.10gb | nvidia_a100_3g.40gb | nvidia_a100-sxm4-80gb
+#SBATCH --gres=gpu:nvidia_a100-sxm4-80gb:1
+
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+
+## RAM: two large teacher models + dual-transform DataLoader workers
+#SBATCH --mem=64G
+
+## Max wall time
+#SBATCH --time=24:0:0
+
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+
+PROJECT=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab
+
+cd "$PROJECT"
+
+echo "======================================================"
+echo "  Job ID     : $SLURM_JOB_ID"
+echo "  Node       : $(hostname)"
+echo "  GPU(s)     : $CUDA_VISIBLE_DEVICES"
+echo "  Python     : $(python --version)"
+echo "  Start time : $(date)"
+echo "======================================================"
+
+# ---------------------------------------------------------------------------
+# Dual-teacher distillation: DINO (224 px) + EVA (448 px) → student (DINO small)
+# Hard-loss weight is implicitly 1 - kd_lambda_dino - kd_lambda_eva = 0.20
+# ---------------------------------------------------------------------------
+
+uv run src/distilation/distilation_dual.py \
+    --dino_ckpt       checkpoints/version_2/dinov3_1_v2-epoch=10-val_auc=0.9154.ckpt \
+    --eva_ckpt        checkpoints_eva/version_0/eva_vit_v0-epoch=17-val_auc=0.9252.ckpt \
+    --student_backbone vit_small_patch16_dinov3.lvd1689m \
+    --image_size      224 \
+    --eva_image_size  448 \
+    --kd_lambda_dino  0.15 \
+    --kd_lambda_eva   0.15 \
+    --kd_temperature  4.0 \
+    --batch_size      32 \
+    --max_epochs      50 \
+    --precision       16-mixed \
+    --checkpoint_dir  checkpoints_student_dual
+
+echo "======================================================"
+echo "  End time : $(date)"
+echo "======================================================"

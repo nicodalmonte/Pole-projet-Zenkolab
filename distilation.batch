@@ -1,21 +1,21 @@
 #!/bin/bash
 #
 #SBATCH --job-name=student_distill
-#SBATCH --output=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab/logs/distill_%j.out
-#SBATCH --error=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab/logs/distill_%j.out
+#SBATCH --output=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/distill_%j.out
+#SBATCH --error=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/distill_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
-#SBATCH --partition=prod40
+#SBATCH --partition=prod80
 
 ## GPU: nvidia_a100_1g.10gb | nvidia_a100_3g.40gb | nvidia_a100-sxm4-80gb
-#SBATCH --gres=gpu:nvidia_a100_3g.40gb
+#SBATCH --gres=gpu:nvidia_a100-sxm4-80gb:1
 
 ## ntasks * cpus-per-task must be in [1 : 4 * nMIG]  (nMIG=4 for prod40)
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 
 ## RAM
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 
 ## Max wall time
 #SBATCH --time=24:0:0
@@ -24,10 +24,12 @@
 # Setup
 # ---------------------------------------------------------------------------
 
-PROJECT=/raid/home/students/sousa_mar/P-le-Projet-Zenkolab
-TEACHER_CKPT=$PROJECT/checkpoints/dinov3_1-v_num=00-epoch=39-val_auc=0.9924.ckpt
+PROJECT=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab
 
 cd "$PROJECT"
+
+# Pick the best teacher checkpoint automatically (highest val_auc in filename)
+TEACHER_CKPT=$(ls checkpoints/version_0/dinov3_1_v0-*.ckpt 2>/dev/null | grep -v last | sort -t= -k3 -rn | head -1)
 
 echo "======================================================"
 echo "  Job ID         : $SLURM_JOB_ID"
@@ -50,18 +52,15 @@ fi
 
 uv run src/distilation/distilation.py \
     --data_dir data/datasets \
-    --teacher_ckpt checkpoints/dinov3_1-v_num=00-epoch=28-val_auc=0.9942.ckpt \
-    --teacher_backbone vit_huge_plus_patch16_dinov3.lvd1689m \
-    --student_backbone vit_small_plus_patch16_dinov3.lvd1689m \
+    --teacher_ckpt "$TEACHER_CKPT" \
+    --teacher_backbone vit_large_patch16_dinov3.lvd1689m \
+    --student_backbone vit_small_patch16_dinov3.lvd1689m \
     --batch_size 32 \
     --precision 32 \
     --image_size 224 \
-    --lr 3e-4 \
-    --weight_decay 1e-4 \
-    --kd_alpha 0.7 \
+    --kd_alpha 0.15 \
     --kd_temperature 4.0 \
     --max_epochs 50 \
-    --num_workers 8 \
     --checkpoint_dir checkpoints_student
 
 echo "======================================================"

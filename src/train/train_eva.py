@@ -1,17 +1,10 @@
-"""Training script for distilled student glaucoma classifier.
+"""Training script for EVA ViT glaucoma classifier.
 
 Dataset split strategy
 ----------------------
-Train  : ACRIMA (all) + Fundus (train) + LAG (train) + ORIGA (all)
-Val    : Fundus (validation) + LAG (validation)
-Test   : REFUGE2 (train, held-out, evaluated after training)
-
-Notes
------
-- The teacher is loaded from a trained checkpoint and kept frozen in eval mode.
-- Only the student is trained.
-- The student backbone is NOT frozen.
-- The student is created with pretrained=True.
+Train  : JRAIGSDataset (balanced subset)
+Val    : ACRIMA + ORIGA + LAG
+Test   : REFUGE2 (held-out)
 """
 
 from __future__ import annotations
@@ -26,11 +19,11 @@ import argparse
 import timm
 import torch
 from torch.utils.data import ConcatDataset, DataLoader, Subset
+from torchvision import transforms
 import lightning as L
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.callbacks import RichModelSummary, RichProgressBar
 from lightning.pytorch.loggers import CSVLogger
-from torchvision import transforms
 
 from src.datasets import (
     ACRIMADataset,
@@ -40,9 +33,7 @@ from src.datasets import (
     REFUGE2Dataset,
     JRAIGSDataset,
 )
-from src.models.dino_v3_1 import DinoV3_1
-from src.models.student import StudentGlaucomaDistilled
-
+from src.models.eva_vit import EvaViT
 from src.datasets.augmentations import AUGMENTATION_TRANSFORMS
 
 
@@ -50,8 +41,7 @@ from src.datasets.augmentations import AUGMENTATION_TRANSFORMS
 # Transforms
 # ---------------------------------------------------------------------------
 
-def build_transforms(backbone_name: str, image_size: int = 896):
-    """Return (train_transform, eval_transform) derived from the timm model config."""
+def build_transforms(backbone_name: str, image_size: int):
     data_cfg = timm.data.resolve_model_data_config(
         timm.create_model(backbone_name, pretrained=False, num_classes=0)
     )
@@ -60,30 +50,21 @@ def build_transforms(backbone_name: str, image_size: int = 896):
     timm_train_tf = timm.data.create_transform(**data_cfg, is_training=True)
     timm_eval_tf = timm.data.create_transform(**data_cfg, is_training=False)
 
-    train_tf = transforms.Compose([
-        AUGMENTATION_TRANSFORMS,
-        timm_train_tf,
-    ])
-
+    train_tf = transforms.Compose([AUGMENTATION_TRANSFORMS, timm_train_tf])
     return train_tf, timm_eval_tf
 
 
 # ---------------------------------------------------------------------------
-# Data helpers
+# Data helpers (same logic as train.py)
 # ---------------------------------------------------------------------------
 
 def _count_glaucoma(ds) -> tuple[int, int]:
-    """Return (n_glaucoma, total) by inspecting stored paths/labels.
-
-    No images are opened — only filename metadata / label lists are read.
-    """
     if isinstance(ds, Subset):
         base_ds = ds.dataset
         if hasattr(base_ds, "samples"):
             g = sum(base_ds.samples[i][1] for i in ds.indices)
             return g, len(ds)
         return 0, len(ds)
-
     if isinstance(ds, ACRIMADataset):
         g = sum(1 for p in ds.image_paths if "_g_" in p.name)
     elif isinstance(ds, LAGDataset):
@@ -102,21 +83,17 @@ def _count_glaucoma(ds) -> tuple[int, int]:
 
 
 def print_split_info(split_name: str, ds) -> None:
-    """Pretty-print size and class balance for a split."""
     sub_datasets = ds.datasets if hasattr(ds, "datasets") else [ds]
     rows: list[tuple[str, int, int, int]] = []
     total_g = total_ng = 0
-
     for sub in sub_datasets:
         g, tot = _count_glaucoma(sub)
         ng = tot - g
         total_g += g
         total_ng += ng
         rows.append((type(sub).__name__, tot, g, ng))
-
     total = total_g + total_ng
     glaucoma_pct = 100.0 * total_g / total if total else 0.0
-
     W = 64
     print(f"\n{'─' * W}")
     print(f"  {split_name}  —  {total} samples total")
@@ -128,30 +105,21 @@ def print_split_info(split_name: str, ds) -> None:
     if len(rows) > 1:
         print(f"  {'─' * 60}")
         print(f"  {'TOTAL':<32}  {total:>6}  {total_g:>9}  {total_ng:>10}")
-    print(
-        f"  Class balance: {glaucoma_pct:.1f}% glaucoma / "
-        f"{100.0 - glaucoma_pct:.1f}% non-glaucoma"
-    )
+    print(f"  Class balance: {glaucoma_pct:.1f}% glaucoma / {100.0 - glaucoma_pct:.1f}% non-glaucoma")
     print(f"{'─' * W}")
 
 
 def compute_class_weights(train_ds) -> list[float]:
-    """Return inverse-frequency class weights [w_neg, w_pos]."""
     sub_datasets = train_ds.datasets if hasattr(train_ds, "datasets") else [train_ds]
     total_g = total_ng = 0
-
     for sub in sub_datasets:
         g, tot = _count_glaucoma(sub)
         total_g += g
         total_ng += tot - g
-
     total = total_g + total_ng
     if total_ng == 0 or total_g == 0:
         return [1.0, 1.0]
-
-    w_neg = total / (2.0 * total_ng)
-    w_pos = total / (2.0 * total_g)
-    return [w_neg, w_pos]
+    return [total / (2.0 * total_ng), total / (2.0 * total_g)]
 
 
 def build_dataloaders(
@@ -159,9 +127,9 @@ def build_dataloaders(
     backbone_name: str,
     batch_size: int,
     num_workers: int,
-    image_size: int = 896,
+    image_size: int,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
-    train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
+    train_tf, eval_tf = build_transforms(backbone_name, image_size)
     target_train_size = 8_000
 
     jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
@@ -176,56 +144,26 @@ def build_dataloaders(
         perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
         selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
 
-    selected_indices = glaucoma_indices + selected_non_glaucoma
-    train_ds = ConcatDataset([
-        Subset(jraigs_train, selected_indices),
-    ])
-
+    train_ds = ConcatDataset([Subset(jraigs_train, glaucoma_indices + selected_non_glaucoma)])
     val_ds = ConcatDataset([
         ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
         ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
         LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf),
     ])
-
-    test_ds = ConcatDataset([
-        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
-    ])
+    test_ds = ConcatDataset([REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf)])
 
     print_split_info("TRAIN", train_ds)
     print_split_info("VAL  ", val_ds)
     print_split_info("TEST (REFUGE2)", test_ds)
 
     pin = torch.cuda.is_available()
-
-    train_dl = DataLoader(
-        train_ds,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=pin,
-        persistent_workers=num_workers > 0,
-    )
-    val_dl = DataLoader(
-        val_ds,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin,
-        persistent_workers=num_workers > 0,
-    )
-    test_dl = DataLoader(
-        test_ds,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=pin,
-        persistent_workers=num_workers > 0,
-    )
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0)
+    val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0)
+    test_dl = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0)
 
     print(f"Train samples : {len(train_ds)}")
     print(f"Val   samples : {len(val_ds)}")
     print(f"Test  samples : {len(test_ds)} (REFUGE2)")
-
     return train_dl, val_dl, test_dl
 
 
@@ -234,70 +172,24 @@ def build_dataloaders(
 # ---------------------------------------------------------------------------
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train distilled student glaucoma classifier")
-
+    p = argparse.ArgumentParser(description="Train EVA ViT glaucoma classifier")
     p.add_argument("--data_dir", default="data/datasets")
-
-    # Teacher
-    p.add_argument(
-        "--teacher_ckpt",
-        type=str,
-        required=True,
-        help="Path to trained DinoV3_1 checkpoint.",
-    )
-    p.add_argument(
-        "--teacher_backbone",
-        default="vit_huge_plus_patch16_dinov3.lvd1689m",
-        help="Teacher backbone name used when the checkpoint was trained.",
-    )
-
-    # Student
-    p.add_argument(
-        "--student_backbone",
-        default="fastvit_t8.apple_dist_in1k",
-        help="Student timm backbone.",
-    )
-    p.add_argument(
-        "--student_pretrained",
-        action="store_true",
-        default=True,
-        help="Use pretrained weights for the student. Default is False.",
-    )
+    p.add_argument("--backbone", default="eva02_large_patch14_448.mim_m38m_ft_in22k_in1k")
+    p.add_argument("--pretrained", action="store_true", default=True)
     p.add_argument("--hidden_dim", type=int, default=256)
     p.add_argument("--dropout", type=float, default=0.2)
-
-    # Optimization
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--weight_decay", type=float, default=1e-4)
+    p.add_argument("--unfreeze_backbone_epoch", type=int, default=3)
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--max_epochs", type=int, default=50)
     p.add_argument("--num_workers", type=int, default=16)
-
-    # Distillation
-    p.add_argument("--kd_alpha", type=float, default=0.7)
-    p.add_argument("--kd_temperature", type=float, default=4.0)
-
-    # Misc
-    p.add_argument("--checkpoint_dir", default="checkpoints_student")
-    p.add_argument("--resume", default=None, help="Path to student checkpoint to resume from")
+    p.add_argument("--checkpoint_dir", default="checkpoints_eva")
+    p.add_argument("--resume", default=None)
     p.add_argument("--devices", default="auto")
     p.add_argument("--precision", default="16-mixed", choices=["32", "16-mixed", "bf16-mixed"])
-    p.add_argument(
-        "--image_size",
-        type=int,
-        default=896,
-        help="Input image size. Must be compatible with the student backbone.",
-    )
-    p.add_argument(
-        "--class_weights",
-        type=float,
-        nargs=2,
-        default=None,
-        metavar=("W_NEG", "W_POS"),
-        help="Manual class weights for [non-glaucoma, glaucoma]. "
-             "If omitted, weights are computed from the training split.",
-    )
-
+    p.add_argument("--image_size", type=int, default=448)
+    p.add_argument("--class_weights", type=float, nargs=2, default=None, metavar=("W_NEG", "W_POS"))
     return p.parse_args()
 
 
@@ -312,36 +204,18 @@ def main() -> None:
 
     train_dl, val_dl, test_dl = build_dataloaders(
         data_dir=args.data_dir,
-        backbone_name=args.student_backbone,
+        backbone_name=args.backbone,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         image_size=args.image_size,
     )
 
-    class_weights = (
-        args.class_weights
-        if args.class_weights is not None
-        else compute_class_weights(train_dl.dataset)
-    )
-    print(
-        f"\nClass weights — non-glaucoma: {class_weights[0]:.4f}  "
-        f"glaucoma: {class_weights[1]:.4f}"
-    )
+    class_weights = args.class_weights if args.class_weights is not None else compute_class_weights(train_dl.dataset)
+    print(f"\nClass weights — non-glaucoma: {class_weights[0]:.4f}  glaucoma: {class_weights[1]:.4f}")
 
-    # ---------------------------------------------------------
-    # Load trained teacher
-    # ---------------------------------------------------------
-    teacher = DinoV3_1.load_from_checkpoint(args.teacher_ckpt)
-    teacher.eval()
-    for p in teacher.parameters():
-        p.requires_grad = False
-
-    # ---------------------------------------------------------
-    # Student
-    # ---------------------------------------------------------
-    student = StudentGlaucomaDistilled(
-        backbone_name=args.student_backbone,
-        pretrained=args.student_pretrained,   # default True
+    model = EvaViT(
+        backbone_name=args.backbone,
+        pretrained=args.pretrained,
         hidden_dim=args.hidden_dim,
         num_classes=2,
         dropout=args.dropout,
@@ -349,34 +223,26 @@ def main() -> None:
         weight_decay=args.weight_decay,
         img_size=args.image_size,
         class_weights=class_weights,
-        teacher_model=teacher,
-        kd_alpha=args.kd_alpha,
-        kd_temperature=args.kd_temperature,
-        freeze_backbone_epochs=0,   # no freezing at all
+        unfreeze_backbone_epoch=args.unfreeze_backbone_epoch,
     )
+
+    logger = CSVLogger(save_dir="lightning_logs", name="eva_vit")
+    version_number = logger.version
 
     callbacks = [
         ModelCheckpoint(
-            dirpath=args.checkpoint_dir,
-            filename="student-{v_num:02d}-{epoch:02d}-{val_auc:.4f}",
+            dirpath=f"{args.checkpoint_dir}/version_{version_number}",
+            filename=f"eva_vit_v{version_number}-" + "{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
             save_last=True,
         ),
-        EarlyStopping(
-            monitor="val_auc",
-            mode="max",
-            patience=10,
-            min_delta=1e-3,
-            verbose=True,
-        ),
+        EarlyStopping(monitor="val_auc", mode="max", patience=10, min_delta=1e-3, verbose=True),
         LearningRateMonitor(logging_interval="epoch"),
         RichProgressBar(leave=True),
         RichModelSummary(max_depth=3),
     ]
-
-    logger = CSVLogger(save_dir="lightning_logs", name="student_distilled")
 
     trainer = L.Trainer(
         max_epochs=args.max_epochs,
@@ -389,13 +255,13 @@ def main() -> None:
         enable_progress_bar=True,
         enable_model_summary=False,
     )
-
-    trainer.fit(student, train_dl, val_dl, ckpt_path=args.resume)
+    torch.set_float32_matmul_precision("medium")
+    trainer.fit(model, train_dl, val_dl, ckpt_path=args.resume)
 
     print("\n" + "=" * 60)
-    print("Testing distilled student on REFUGE2 (held-out test set)")
+    print("Testing EVA ViT on REFUGE2 (held-out test set)")
     print("=" * 60)
-    trainer.test(student, test_dl, ckpt_path="best")
+    trainer.test(model, test_dl, ckpt_path="best")
 
 
 if __name__ == "__main__":

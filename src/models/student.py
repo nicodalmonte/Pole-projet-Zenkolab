@@ -13,26 +13,32 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 
-class _StudentBackbone(L.LightningModule):
+class _StudentBackbone(nn.Module):
     """Backbone of the student.
-    
+
     Args:
         backbone_name: timm backbone for the student.
         pretrained: load ImageNet pretrained weights.
+        img_size: input image size.
     """
-    
+
     def __init__(
         self,
         backbone_name: str,
         pretrained: bool,
+        img_size: int,
     ) -> None:
-        super.__init__()
+        super().__init__()
         self.backbone = timm.create_model(
             backbone_name,
             pretrained=pretrained,
             num_classes=0,
+            img_size=img_size,
         )
-    
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.backbone(x)
+
 
 class _StudentHead(nn.Module):
     """Small but expressive classification head.
@@ -50,12 +56,10 @@ class _StudentHead(nn.Module):
     ) -> None:
         super().__init__()
         self.layers = nn.Sequential(
+            # Layer 1
             nn.LayerNorm(in_features),
             nn.Dropout(dropout),
-            nn.Linear(in_features, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, num_classes),
+            nn.Linear(in_features, num_classes),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -88,11 +92,11 @@ class StudentGlaucomaDistilled(L.LightningModule):
     def __init__(
         self,
         backbone_name: str = "fastvit_t8.apple_dist_in1k",
-        pretrained: bool = False,
+        pretrained: bool = True,
         hidden_dim: int = 256,
         num_classes: int = 2,
         dropout: float = 0.2,
-        lr: float = 3e-4,
+        lr: float = 1e-4,
         weight_decay: float = 1e-4,
         img_size: int = 896,
         class_weights: list[float] | None = None,
@@ -104,12 +108,12 @@ class StudentGlaucomaDistilled(L.LightningModule):
         super().__init__()
         self.save_hyperparameters(ignore=["teacher_model"])
 
-        self.backbone = _StudentBackbone(
+        self.student = _StudentBackbone(
             backbone_name,
             pretrained=pretrained,
-            num_classes=0,
+            img_size=img_size,
         )
-        embed_dim: int = self.backbone.num_features
+        embed_dim: int = self.student.backbone.num_features
 
         self.head = _StudentHead(
             in_features=embed_dim,
@@ -131,7 +135,7 @@ class StudentGlaucomaDistilled(L.LightningModule):
             for p in self.teacher.parameters():
                 p.requires_grad = False
 
-        self._backbone_is_frozen = False
+        self._student_backbone_is_frozen = False
         if freeze_backbone_epochs > 0:
             self._freeze_backbone()
 
@@ -147,22 +151,28 @@ class StudentGlaucomaDistilled(L.LightningModule):
         self.test_sensitivity = BinaryRecall()
         self.test_specificity = BinarySpecificity()
 
+    def train(self, mode: bool = True):
+        super().train(mode)
+        if self.teacher is not None:
+            self.teacher.eval()
+        return self
+
     # ------------------------------------------------------------------
     # Freeze / unfreeze
     # ------------------------------------------------------------------
 
     def _freeze_backbone(self) -> None:
-        for p in self.backbone.parameters():
+        for p in self.student.backbone.parameters():
             p.requires_grad = False
-        self._backbone_is_frozen = True
+        self._student_backbone_is_frozen = True
 
     def _unfreeze_backbone(self) -> None:
-        for p in self.backbone.parameters():
+        for p in self.student.backbone.parameters():
             p.requires_grad = True
-        self._backbone_is_frozen = False
+        self._student_backbone_is_frozen = False
 
     def on_train_epoch_start(self) -> None:
-        if self._backbone_is_frozen and self.current_epoch >= int(self.hparams.freeze_backbone_epochs):
+        if self._student_backbone_is_frozen and self.current_epoch >= int(self.hparams.freeze_backbone_epochs):
             self._unfreeze_backbone()
             self.print(f"Unfroze student backbone at epoch {self.current_epoch}.")
 
@@ -171,7 +181,7 @@ class StudentGlaucomaDistilled(L.LightningModule):
     # ------------------------------------------------------------------
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        features = self.backbone(x)
+        features = self.student(x)
         return self.head(features)
 
     # ------------------------------------------------------------------
@@ -203,6 +213,7 @@ class StudentGlaucomaDistilled(L.LightningModule):
             return total_loss, hard_loss, soft_loss
 
         with torch.no_grad():
+            self.teacher.eval()
             teacher_logits = self.teacher(images)
 
         soft_loss = self._kd_loss(student_logits, teacher_logits)
@@ -297,8 +308,9 @@ class StudentGlaucomaDistilled(L.LightningModule):
     # ------------------------------------------------------------------
 
     def configure_optimizers(self):
+        trainable_params = [p for p in self.parameters() if p.requires_grad]
         optimizer = torch.optim.AdamW(
-            self.parameters(),
+            trainable_params,
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )

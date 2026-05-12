@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-#SBATCH --job-name=dino_v3
-#SBATCH --output=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/train_%j.out
-#SBATCH --error=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/train_%j.out
+#SBATCH --job-name=ensemble_dual
+#SBATCH --output=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/ensemble_%j.out
+#SBATCH --error=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab/logs/ensemble_%j.out
 
 ## Partition: prod10 | prod20 | prod40 | prod80
 #SBATCH --partition=prod40
@@ -10,14 +10,13 @@
 ## GPU: nvidia_a100_1g.10gb | nvidia_a100_3g.40gb | nvidia_a100-sxm4-80gb
 #SBATCH --gres=gpu:nvidia_a100_3g.40gb
 
-## ntasks * cpus-per-task must be in [1 : 4 * nMIG]  (nMIG=4 for prod40)
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 
-## RAM
+## RAM — two loaders with 8 workers each, plus two large models in memory
 #SBATCH --mem=32G
 
-## Max wall time
+## Max wall time — inference only, should finish in minutes
 #SBATCH --time=24:0:0
 
 # ---------------------------------------------------------------------------
@@ -26,10 +25,6 @@
 
 PROJECT=/raid/home/students/dalmonte_nic/P-le-Projet-Zenkolab
 
-# Activate virtual environment
-#I use uv
-
-# Move to project root so relative paths (datasets/, checkpoints/) work
 cd "$PROJECT"
 
 echo "======================================================"
@@ -40,8 +35,18 @@ echo "  Python     : $(python --version)"
 echo "  Start time : $(date)"
 echo "======================================================"
 
+# ---------------------------------------------------------------------------
+# Ensemble evaluation — DINO (224 px) + EVA ViT (448 px) on REFUGE2 test set
+# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Training
-# ---------------------------------------------------------------------------
-uv run src/train/train.py --batch_size 32 --precision 32 --image_size 224 --backbone vit_small_patch16_dinov3.lvd1689m
+uv run src/ensemble_eval_dual_tf.py \
+    --dino_ckpt  checkpoints/version_2/dinov3_1_v2-epoch=10-val_auc=0.9154.ckpt \
+    --eva_ckpt   checkpoints_eva/version_0/eva_vit_v0-epoch=17-val_auc=0.9252.ckpt \
+    --data_dir   data/datasets \
+    --split      refuge2 \
+    --batch_size 16 \
+    --num_workers 8
+
+echo "======================================================"
+echo "  End time : $(date)"
+echo "======================================================"
