@@ -5,14 +5,14 @@
 #SBATCH --error=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/paper2_%j.err
 
 ## Partition: prod10 | prod20 | prod40 | prod80
-#SBATCH --partition=prod10
+#SBATCH --partition=prod40
 
 ## GPU
-#SBATCH --gres=gpu:nvidia_a100_1g.10gb:1
+#SBATCH --gres=gpu:nvidia_a100_3g.40gb:1
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
+#SBATCH --mem=32G
 #SBATCH --time=24:0:0
 
 # ---------------------------------------------------------------------------
@@ -28,15 +28,16 @@ echo "  Python     : $(uv run python --version)"
 echo "  Start time : $(date)"
 echo "======================================================"
 
-# Paper 2 — MobileNet-V2 three-model study
-# Runs Model-1, Model-2, Model-FT sequentially.
-# Each: Phase 1 (ACRIMA) → Phase 2 (ORIGA fine-tune) → test all datasets.
-# Figures saved to figures/paper2/{model}/ + comparison_auc.png
+# Paper 2 — MobileNet (Esengönül & Cunha, Procedia 2023)
+# 4 datasets × 3 model variants = 12 independent training runs
+# Split: 72/8/20 (train/val/test) → 80-20 test holdout fidèle au papier
+# Preprocessing: resize 224 → grayscale → center crop → CLAHE → 3-ch RGB
+# Augmentation: zoom ±3.5%, rotation ±0.025° seulement (pas de flips)
+# Datasets: ACRIMA (703), AIROGSLight (5000 cap), Harvard (1544, 3 classes), RIM-ONE (970)
 uv run python -m src.train.paper.paper2_mobilenet \
     --batch_size 32 \
-    --max_epochs 25 \
-    --lr1 1e-3 \
-    --lr2 1e-4 \
+    --max_epochs 50 \
+    --lr 1e-3 \
     --num_workers 4 \
     --precision 16-mixed
 

@@ -5,14 +5,14 @@
 #SBATCH --error=/raid/home/students/goldrajch_dav/projectEYE/P-le-Projet-Zenkolab/logs/paper1_%j.err
 
 ## Partition: prod10 | prod20 | prod40 | prod80
-#SBATCH --partition=prod10
+#SBATCH --partition=prod80
 
 ## GPU
-#SBATCH --gres=gpu:nvidia_a100_1g.10gb:1
+#SBATCH --gres=gpu:nvidia_a100-sxm4-80gb:1
 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
+#SBATCH --mem=32G
 #SBATCH --time=24:0:0
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ uv run python -m src.train.paper.paper1_efficientnet \
     --lr1 1e-3 \
     --lr2 1e-4 \
     --num_workers 4 \
-    --precision 16-mixed
+    --precision 16-mixed 
 
 echo "======================================================"
 echo "  End time : $(date)"
