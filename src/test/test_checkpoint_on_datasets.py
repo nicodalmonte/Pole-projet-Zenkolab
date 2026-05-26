@@ -40,6 +40,7 @@ from src.datasets import (  # noqa: E402
     ORIGADataset,
     REFUGE2Dataset,
 )
+from src.datasets.custom.FJLO import FJLODataset  # noqa: E402
 from src.train.train import build_transforms  # noqa: E402
 
 
@@ -52,6 +53,7 @@ DATASET_REGISTRY = {
     "JRAIGS": JRAIGSDataset,
     "G1020_TEST": G1020Dataset,
     "G1020_TRAIN": G1020Dataset,
+    "FJLO_TEST": FJLODataset,
 }
 
 DEFAULT_SPLITS = {
@@ -59,6 +61,7 @@ DEFAULT_SPLITS = {
     "G1020_TEST": "test",
     "G1020_TRAIN": "train",
     "ACRIMA" : "test",
+    "FJLO_TEST": "test",
 }
 
 MODEL_REGISTRY = {

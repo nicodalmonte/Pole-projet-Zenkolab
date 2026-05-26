@@ -244,10 +244,10 @@ def build_combined_dataset(data_dir: str) -> ConcatDataset:
         _set_source_name(LAGDataset(data_dir=data_dir, split="validation", transforms=None), "LAG(validation)"),
         _set_source_name(LAGDataset(data_dir=data_dir, split="test", transforms=None), "LAG(test)"),
         _set_source_name(ORIGADataset(data_dir=data_dir, transforms=None), "ORIGA(all)"),
-        _set_source_name(RIMONEDataset(data_dir=data_dir, split="train", partition="hospital", transforms=None), "RIM-ONE(hospital_train)"),
-        _set_source_name(RIMONEDataset(data_dir=data_dir, split="test", partition="hospital", transforms=None), "RIM-ONE(hospital_test)"),
-        _set_source_name(RIMONEDataset(data_dir=data_dir, split="train", partition="random", transforms=None), "RIM-ONE(random_train)"),
-        _set_source_name(RIMONEDataset(data_dir=data_dir, split="test", partition="random", transforms=None), "RIM-ONE(random_test)"),
+        #_set_source_name(RIMONEDataset(data_dir=data_dir, split="train", partition="hospital", transforms=None), "RIM-ONE(hospital_train)"),
+        #_set_source_name(RIMONEDataset(data_dir=data_dir, split="test", partition="hospital", transforms=None), "RIM-ONE(hospital_test)"),
+        #_set_source_name(RIMONEDataset(data_dir=data_dir, split="train", partition="random", transforms=None), "RIM-ONE(random_train)"),
+        #_set_source_name(RIMONEDataset(data_dir=data_dir, split="test", partition="random", transforms=None), "RIM-ONE(random_test)"),
     ]
     return ConcatDataset(datasets)
 
