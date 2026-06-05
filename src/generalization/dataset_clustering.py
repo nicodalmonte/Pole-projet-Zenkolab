@@ -23,6 +23,7 @@ import timm
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
+from torchvision import transforms as T
 
 from src.datasets import (
     ACRIMADataset,
@@ -55,7 +56,13 @@ def build_eval_transform(backbone_name: str, img_size: int = 224):
         timm.create_model(backbone_name, pretrained=False, num_classes=0)
     )
     data_cfg["input_size"] = (3, img_size, img_size)
-    return timm.data.create_transform(**data_cfg, is_training=False)
+    transform = timm.data.create_transform(**data_cfg, is_training=False)
+    if hasattr(transform, "transforms") and not any(isinstance(item, T.Normalize) for item in transform.transforms):
+        transform = T.Compose([
+            *transform.transforms,
+            T.Normalize(mean=data_cfg["mean"], std=data_cfg["std"]),
+        ])
+    return transform
 
 
 def load_backbone(backbone_name: str, device: torch.device) -> torch.nn.Module:
