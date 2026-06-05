@@ -12,6 +12,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from datasets.G1020 import G1020Dataset
+from datasets.RIM_ONE import RIMONEDataset
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
@@ -72,33 +75,42 @@ def build_transforms(backbone_name: str, image_size: int = 896):
 # ---------------------------------------------------------------------------
 # Data
 # ---------------------------------------------------------------------------
-def _count_glaucoma(ds) -> tuple[int, int]:
-    """Return (n_glaucoma, total) by inspecting stored paths/labels.
+def _count_glaucoma(dataset: Dataset) -> tuple[int, int]:
+    if isinstance(dataset, Subset):
+        glaucoma = sum(_label_at(dataset.dataset, index) for index in dataset.indices)
+        return glaucoma, len(dataset)
 
-    No images are opened — only filename metadata / label lists are read.
-    """
-    if isinstance(ds, Subset):
-        base_ds = ds.dataset
-        if hasattr(base_ds, "samples"):
-            g = sum(base_ds.samples[i][1] for i in ds.indices)
-            return g, len(ds)
-        return 0, len(ds)
+    if isinstance(dataset, ConcatDataset):
+        total_glaucoma = 0
+        total_samples = 0
+        for child in dataset.datasets:
+            glaucoma, total = _count_glaucoma(child)
+            total_glaucoma += glaucoma
+            total_samples += total
+        return total_glaucoma, total_samples
 
-    if isinstance(ds, ACRIMADataset):
-        g = sum(1 for p in ds.image_paths if "_g_" in p.name)
-    elif isinstance(ds, LAGDataset):
-        g = sum(1 for p in ds.image_paths if p.name.startswith("g."))
-    elif isinstance(ds, ORIGADataset):
-        g = sum(lbl for _, lbl in ds.samples)
-    elif isinstance(ds, REFUGE2Dataset):
-        g = sum(1 for p in ds.image_paths if p.name.startswith("g"))
-    elif isinstance(ds, FundusTrainValDataset):
-        g = sum(ds.labels)
-    elif isinstance(ds, JRAIGSDataset):
-        g = sum(lbl for _, lbl in ds.samples)
-    else:
-        return 0, len(ds)
-    return g, len(ds)
+    if isinstance(dataset, ACRIMADataset):
+        glaucoma = sum(1 for path in dataset.image_paths if "_g_" in path.name)
+        return glaucoma, len(dataset)
+    if isinstance(dataset, FundusTrainValDataset):
+        return sum(dataset.labels), len(dataset)
+    if isinstance(dataset, G1020Dataset):
+        return sum(dataset.labels), len(dataset)
+    if isinstance(dataset, JRAIGSDataset):
+        return sum(label for _, label in dataset.samples), len(dataset)
+    if isinstance(dataset, LAGDataset):
+        glaucoma = sum(1 for path in dataset.image_paths if path.name.startswith("g."))
+        return glaucoma, len(dataset)
+    if isinstance(dataset, ORIGADataset):
+        glaucoma = sum(label for _, label in dataset.samples)
+        return glaucoma, len(dataset)
+    if isinstance(dataset, REFUGE2Dataset):
+        glaucoma = sum(1 for path in dataset.image_paths if path.name.startswith("g"))
+        return glaucoma, len(dataset)
+    if isinstance(dataset, RIMONEDataset):
+        glaucoma = sum(int(label) for label in dataset.labels)
+        return glaucoma, len(dataset)
+    raise TypeError(f"Unsupported dataset type for counting: {type(dataset).__name__}")
 
 
 def print_split_info(split_name: str, ds) -> None:

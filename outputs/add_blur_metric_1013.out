@@ -1,0 +1,25 @@
+======================================================
+  Job ID     : 1013
+  Node       : dgx-a100
+  Start time : Mon Mar 16 18:42:56 CET 2026
+  CWD        : /raid/home/students/hawky_luc/P-le-Projet-Zenkolab
+======================================================
+Loaded: /raid/home/students/hawky_luc/P-le-Projet-Zenkolab/datasets/jraigs_prepared/labels.csv
+Rows=93011 | Cols=28 | image_col=kept_image
+Rows with valid image paths: 93011
+Rows to compute blur metric: 93011
+
+Saved blur metric.
+Output: /raid/home/students/hawky_luc/P-le-Projet-Zenkolab/datasets/jraigs_prepared/labels.csv
+Column: blur_score
+Non-null blur scores: 93011
+count    93011.000000
+mean       345.274230
+std        260.564888
+min          4.300293
+25%        164.794922
+50%        281.742188
+75%        443.233643
+max       2402.221191
+Name: blur_score, dtype: float64
+End time : Mon Mar 16 19:59:52 CET 2026

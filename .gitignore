@@ -96,6 +96,7 @@ predictions/
 *.joblib
 data/**
 job.batch
+*.sh
 
 # OS Files
 .DS_Store

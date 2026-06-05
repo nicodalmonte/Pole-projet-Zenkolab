@@ -56,9 +56,9 @@ DL_DATASET_DICT = {
         "type" : "cli",
         "required" : ["kaggle"],
         "commands" : [
-            #"kaggle datasets download kiamahmed/glaucoma-fundus-imaging-g1020-splitted",
-            #"unzip glaucoma-fundus-imaging-g1020-splitted.zip -d .",
-            #"rm glaucoma-fundus-imaging-g1020-splitted.zip",
+            "kaggle datasets download kiamahmed/glaucoma-fundus-imaging-g1020-splitted",
+            "unzip glaucoma-fundus-imaging-g1020-splitted.zip -d .",
+            "rm glaucoma-fundus-imaging-g1020-splitted.zip",
             "mv Images_splitted G1020",
         ]
     },
@@ -155,4 +155,4 @@ def install(NAME_LIST = None, reinstall_all = True):
             print(f"[{name}] Installed to {dst}")
 
 if __name__ == '__main__':
-    install(["G1020"], reinstall_all = False)
+    install(["RIM-ONE"], reinstall_all = False)
