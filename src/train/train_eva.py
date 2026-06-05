@@ -128,33 +128,40 @@ def build_dataloaders(
     batch_size: int,
     num_workers: int,
     image_size: int,
+    dataset: str = "jraigs",
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size)
-    target_train_size = 8_000
 
-    jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
-    glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
-    non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
+    if dataset == "lag_origa":
+        train_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="train", transforms=train_tf)])
+        val_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf)])
+        test_ds = ConcatDataset([ORIGADataset(data_dir=data_dir, transforms=eval_tf)])
+    else:  # jraigs (default)
+        target_train_size = 8_000
 
-    remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
-    if remaining_slots >= len(non_glaucoma_indices):
-        selected_non_glaucoma = non_glaucoma_indices
-    else:
-        g = torch.Generator().manual_seed(42)
-        perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
-        selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+        jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
+        glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
+        non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
 
-    train_ds = ConcatDataset([Subset(jraigs_train, glaucoma_indices + selected_non_glaucoma)])
-    val_ds = ConcatDataset([
-        ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf),
-    ])
-    test_ds = ConcatDataset([REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf)])
+        remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
+        if remaining_slots >= len(non_glaucoma_indices):
+            selected_non_glaucoma = non_glaucoma_indices
+        else:
+            g = torch.Generator().manual_seed(42)
+            perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
+            selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+
+        train_ds = ConcatDataset([Subset(jraigs_train, glaucoma_indices + selected_non_glaucoma)])
+        val_ds = ConcatDataset([
+            ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+            ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+            LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        ])
+        test_ds = ConcatDataset([REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf)])
 
     print_split_info("TRAIN", train_ds)
     print_split_info("VAL  ", val_ds)
-    print_split_info("TEST (REFUGE2)", test_ds)
+    print_split_info("TEST ", test_ds)
 
     pin = torch.cuda.is_available()
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin, persistent_workers=num_workers > 0)
@@ -163,7 +170,7 @@ def build_dataloaders(
 
     print(f"Train samples : {len(train_ds)}")
     print(f"Val   samples : {len(val_ds)}")
-    print(f"Test  samples : {len(test_ds)} (REFUGE2)")
+    print(f"Test  samples : {len(test_ds)}")
     return train_dl, val_dl, test_dl
 
 
@@ -184,9 +191,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch_size", type=int, default=32)
     p.add_argument("--max_epochs", type=int, default=50)
     p.add_argument("--num_workers", type=int, default=16)
-    p.add_argument("--checkpoint_dir", default="checkpoints_eva")
+    p.add_argument("--checkpoint_dir", default="checkpoints/eva")
+    p.add_argument("--run_name", default="eva", help="Prefix used in checkpoint filenames.")
     p.add_argument("--resume", default=None)
     p.add_argument("--devices", default="auto")
+    p.add_argument("--dataset", default="jraigs", choices=["jraigs", "lag_origa"],
+                   help="Dataset config: 'jraigs' (default) or 'lag_origa' (LAG train, ORIGA test).")
     p.add_argument("--precision", default="16-mixed", choices=["32", "16-mixed", "bf16-mixed"])
     p.add_argument("--image_size", type=int, default=448)
     p.add_argument("--class_weights", type=float, nargs=2, default=None, metavar=("W_NEG", "W_POS"))
@@ -208,6 +218,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         image_size=args.image_size,
+        dataset=args.dataset,
     )
 
     class_weights = args.class_weights if args.class_weights is not None else compute_class_weights(train_dl.dataset)
@@ -226,13 +237,13 @@ def main() -> None:
         unfreeze_backbone_epoch=args.unfreeze_backbone_epoch,
     )
 
-    logger = CSVLogger(save_dir="lightning_logs", name="eva_vit")
-    version_number = logger.version
+    logger = CSVLogger(save_dir="lightning_logs", name=args.run_name)
+    print(f"Logging to: lightning_logs/{args.run_name}/version_{logger.version}")
 
     callbacks = [
         ModelCheckpoint(
-            dirpath=f"{args.checkpoint_dir}/version_{version_number}",
-            filename=f"eva_vit_v{version_number}-" + "{epoch:02d}-{val_auc:.4f}",
+            dirpath=args.checkpoint_dir,
+            filename=f"{args.run_name}-" + "{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
@@ -259,7 +270,7 @@ def main() -> None:
     trainer.fit(model, train_dl, val_dl, ckpt_path=args.resume)
 
     print("\n" + "=" * 60)
-    print("Testing EVA ViT on REFUGE2 (held-out test set)")
+    print("Testing EVA ViT on held-out test set")
     print("=" * 60)
     trainer.test(model, test_dl, ckpt_path="best")
 

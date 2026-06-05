@@ -6,9 +6,9 @@ Softmax probabilities from both models are averaged for the final prediction.
 
 Usage
 -----
-uv run src/ensemble_eval_dual_tf.py \
-    --dino_ckpt  checkpoints/version_2/dinov3_1_v2-epoch=10-val_auc=0.9154.ckpt \
-    --eva_ckpt   checkpoints_eva/version_0/eva_vit_v0-epoch=17-val_auc=0.9252.ckpt \
+uv run src/eval/ensemble_eval_dual_tf.py \
+    --dino_ckpt  checkpoints/dino_large/dino_large_lag_v2-epoch=25-val_auc=0.9941.ckpt \
+    --eva_ckpt   checkpoints/eva/eva_lag_v2-epoch=38-val_auc=0.9924.ckpt \
     --data_dir   data/datasets \
     --split      refuge2
 """
@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 # Make the project root importable when running as a script
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
 
@@ -86,8 +86,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--split",
         default="refuge2",
-        choices=["refuge2", "val"],
-        help="'refuge2' = REFUGE2 held-out test set; 'val' = ACRIMA+ORIGA+LAG.",
+        choices=["refuge2", "val", "origa"],
+        help="'refuge2' = REFUGE2 held-out test set; 'val' = ACRIMA+ORIGA+LAG; 'origa' = ORIGA held-out test set.",
     )
     return p.parse_args()
 
@@ -179,11 +179,12 @@ def main() -> None:
 
     # Dataset specs: list of (DatasetClass, init_kwargs_without_transforms)
     if args.split == "refuge2":
-        # REFUGE2 "train" images are the held-out test set for this competition
         ds_specs = [(REFUGE2Dataset, {"data_dir": args.data_dir, "split": "train"})]
         split_label = "REFUGE2 (test)"
+    elif args.split == "origa":
+        ds_specs = [(ORIGADataset, {"data_dir": args.data_dir, "split": "train"})]
+        split_label = "ORIGA (test)"
     else:
-        # Val split mirrors the validation setup used during training
         ds_specs = [
             (ACRIMADataset, {"data_dir": args.data_dir, "split": "train"}),
             (ORIGADataset, {"data_dir": args.data_dir, "split": "train"}),

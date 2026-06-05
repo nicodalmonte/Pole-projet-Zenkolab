@@ -154,61 +154,42 @@ def build_dataloaders(
     batch_size: int,
     num_workers: int,
     image_size: int = 896,
+    dataset: str = "jraigs",
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
-    target_train_size = 8_000
 
-    ## --- Train ---
-    #train_ds = ConcatDataset([
-    #    ACRIMADataset(data_dir=data_dir, split="train", transforms=train_tf),
-    #    LAGDataset(data_dir=data_dir, split="train", transforms=train_tf),
-    #    ORIGADataset(data_dir=data_dir, split="train", transforms=train_tf),
-    #])
-#
-    ## --- Val ---
-    #val_ds = ConcatDataset([
-    #    FundusTrainValDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
-    #    LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf),
-    #])
-#
-    ## --- Test (REFUGE2, all three splits) ---
-    #test_ds = ConcatDataset([
-    #    REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
-    #])
+    if dataset == "lag_origa":
+        train_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="train", transforms=train_tf)])
+        val_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf)])
+        test_ds = ConcatDataset([ORIGADataset(data_dir=data_dir, transforms=eval_tf)])
+    else:  # jraigs (default)
+        target_train_size = 8_000
 
-    jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
-    glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
-    non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
+        jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
+        glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
+        non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
 
-    remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
-    if remaining_slots >= len(non_glaucoma_indices):
-        selected_non_glaucoma = non_glaucoma_indices
-    else:
-        g = torch.Generator().manual_seed(42)
-        perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
-        selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+        remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
+        if remaining_slots >= len(non_glaucoma_indices):
+            selected_non_glaucoma = non_glaucoma_indices
+        else:
+            g = torch.Generator().manual_seed(42)
+            perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
+            selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
 
-    selected_indices = glaucoma_indices + selected_non_glaucoma
-    train_ds = ConcatDataset([
-        Subset(jraigs_train, selected_indices),
-    ])
-    #traind_ds = jraigs_train ## if I want all to use all the images
-    
+        selected_indices = glaucoma_indices + selected_non_glaucoma
+        train_ds = ConcatDataset([Subset(jraigs_train, selected_indices)])
 
-    val_ds = ConcatDataset([
-        ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf)
-    ])
+        val_ds = ConcatDataset([
+            ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+            ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+            LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        ])
+        test_ds = ConcatDataset([REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf)])
 
-    test_ds = ConcatDataset([
-        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),        
-    ])
-
-    # -- Print dataset details before building DataLoaders --
     print_split_info("TRAIN", train_ds)
     print_split_info("VAL  ", val_ds)
-    print_split_info("TEST (REFUGE2)", test_ds)
+    print_split_info("TEST ", test_ds)
 
     pin = torch.cuda.is_available()
 
@@ -227,7 +208,7 @@ def build_dataloaders(
 
     print(f"Train samples : {len(train_ds)}")
     print(f"Val   samples : {len(val_ds)}")
-    print(f"Test  samples : {len(test_ds)} (REFUGE2)")
+    print(f"Test  samples : {len(test_ds)}")
 
     return train_dl, val_dl, test_dl
 
@@ -255,8 +236,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max_epochs", type=int, default=50)
     p.add_argument("--num_workers", type=int, default=16)
     p.add_argument("--checkpoint_dir", default="checkpoints")
+    p.add_argument("--run_name", default="model", help="Prefix used in checkpoint filenames.")
     p.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
     p.add_argument("--devices", default="auto")
+    p.add_argument("--dataset", default="jraigs", choices=["jraigs", "lag_origa"],
+                   help="Dataset config: 'jraigs' (default) or 'lag_origa' (LAG train, ORIGA test).")
     p.add_argument("--precision", default="16-mixed", choices=["32", "16-mixed", "bf16-mixed"])
     p.add_argument(
         "--image_size",
@@ -295,6 +279,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         image_size=args.image_size,
+        dataset=args.dataset,
     )
 
     class_weights = args.class_weights if args.class_weights is not None else compute_class_weights(train_dl.dataset)
@@ -313,14 +298,13 @@ def main() -> None:
         unfreeze_backbone_epoch=args.unfreeze_backbone_epoch,
     )
 
-    logger = CSVLogger(save_dir="lightning_logs", name="dinov3_1")
-    version_number = logger.version
-    print(f"L Logging to: lightning_logs/dinov3_1/version_{version_number}")
+    logger = CSVLogger(save_dir="lightning_logs", name=args.run_name)
+    print(f"Logging to: lightning_logs/{args.run_name}/version_{logger.version}")
 
     callbacks = [
         ModelCheckpoint(
-            dirpath=f"{args.checkpoint_dir}/version_{version_number}",
-            filename=f"dinov3_1_v{version_number}-"+"{epoch:02d}-{val_auc:.4f}",
+            dirpath=args.checkpoint_dir,
+            filename=f"{args.run_name}-" + "{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
@@ -354,7 +338,7 @@ def main() -> None:
 
     # --- Test on REFUGE2 using the best checkpoint ---
     print("\n" + "=" * 60)
-    print("Testing on REFUGE2 (held-out test set)")
+    print("Testing on held-out test set")
     print("=" * 60)
     trainer.test(model, test_dl, ckpt_path="best")
 

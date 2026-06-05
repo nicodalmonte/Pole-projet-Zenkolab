@@ -160,40 +160,42 @@ def build_dataloaders(
     batch_size: int,
     num_workers: int,
     image_size: int = 896,
+    dataset: str = "jraigs",
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_tf, eval_tf = build_transforms(backbone_name, image_size=image_size)
-    target_train_size = 8_000
 
-    jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
-    glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
-    non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
+    if dataset == "lag_origa":
+        train_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="train", transforms=train_tf)])
+        val_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="validation", transforms=eval_tf)])
+        test_ds = ConcatDataset([ORIGADataset(data_dir=data_dir, transforms=eval_tf)])
+    else:  # jraigs (default)
+        target_train_size = 8_000
 
-    remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
-    if remaining_slots >= len(non_glaucoma_indices):
-        selected_non_glaucoma = non_glaucoma_indices
-    else:
-        g = torch.Generator().manual_seed(42)
-        perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
-        selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+        jraigs_train = JRAIGSDataset(data_dir=data_dir, transforms=train_tf)
+        glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 1]
+        non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_train.samples) if lbl == 0]
 
-    selected_indices = glaucoma_indices + selected_non_glaucoma
-    train_ds = ConcatDataset([
-        Subset(jraigs_train, selected_indices),
-    ])
+        remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
+        if remaining_slots >= len(non_glaucoma_indices):
+            selected_non_glaucoma = non_glaucoma_indices
+        else:
+            g = torch.Generator().manual_seed(42)
+            perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
+            selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
 
-    val_ds = ConcatDataset([
-        ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
-        LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf),
-    ])
+        selected_indices = glaucoma_indices + selected_non_glaucoma
+        train_ds = ConcatDataset([Subset(jraigs_train, selected_indices)])
 
-    test_ds = ConcatDataset([
-        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf),
-    ])
+        val_ds = ConcatDataset([
+            ACRIMADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+            ORIGADataset(data_dir=data_dir, split="train", transforms=eval_tf),
+            LAGDataset(data_dir=data_dir, split="train", transforms=eval_tf),
+        ])
+        test_ds = ConcatDataset([REFUGE2Dataset(data_dir=data_dir, split="train", transforms=eval_tf)])
 
     print_split_info("TRAIN", train_ds)
     print_split_info("VAL  ", val_ds)
-    print_split_info("TEST (REFUGE2)", test_ds)
+    print_split_info("TEST ", test_ds)
 
     pin = torch.cuda.is_available()
 
@@ -224,7 +226,7 @@ def build_dataloaders(
 
     print(f"Train samples : {len(train_ds)}")
     print(f"Val   samples : {len(val_ds)}")
-    print(f"Test  samples : {len(test_ds)} (REFUGE2)")
+    print(f"Test  samples : {len(test_ds)}")
 
     return train_dl, val_dl, test_dl
 
@@ -278,9 +280,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--kd_temperature", type=float, default=4.0)
 
     # Misc
-    p.add_argument("--checkpoint_dir", default="checkpoints_student")
+    p.add_argument("--checkpoint_dir", default="checkpoints/student")
     p.add_argument("--resume", default=None, help="Path to student checkpoint to resume from")
     p.add_argument("--devices", default="auto")
+    p.add_argument("--dataset", default="jraigs", choices=["jraigs", "lag_origa"],
+                   help="Dataset config: 'jraigs' (default) or 'lag_origa' (LAG train, ORIGA test).")
     p.add_argument("--precision", default="16-mixed", choices=["32", "16-mixed", "bf16-mixed"])
     p.add_argument(
         "--image_size",
@@ -316,6 +320,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         image_size=args.image_size,
+        dataset=args.dataset,
     )
 
     class_weights = (
@@ -358,7 +363,7 @@ def main() -> None:
     callbacks = [
         ModelCheckpoint(
             dirpath=args.checkpoint_dir,
-            filename="student-{v_num:02d}-{epoch:02d}-{val_auc:.4f}",
+            filename="student_single-{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
@@ -393,7 +398,7 @@ def main() -> None:
     trainer.fit(student, train_dl, val_dl, ckpt_path=args.resume)
 
     print("\n" + "=" * 60)
-    print("Testing distilled student on REFUGE2 (held-out test set)")
+    print("Testing distilled student on held-out test set")
     print("=" * 60)
     trainer.test(student, test_dl, ckpt_path="best")
 

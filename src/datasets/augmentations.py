@@ -15,20 +15,16 @@ def create_augmentation_transforms():
                               Can be easily modified by adding/removing transforms.
     """
     augmentation_transforms = transforms.Compose([
-        transforms.RandomRotation(degrees=15),  # Random rotation ±15 degrees
+        transforms.RandomRotation(degrees=30),
         transforms.RandomAffine(
             degrees=0,
-            translate=(0.1, 0.1),  # Random translation ±10%
-            scale=(0.9, 1.1),  # Random scaling 90%-110%
+            translate=(0.15, 0.15),
+            scale=(0.8, 1.2),
         ),
-        transforms.RandomHorizontalFlip(p=0.5),  # Random horizontal flip
-        transforms.RandomVerticalFlip(p=0.5),  # Random vertical flip
-        #transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),  # Gaussian blur
-        #transforms.ColorJitter(
-        #    brightness=0.2,
-        #    contrast=0.2,
-        #    saturation=0.2,
-        #),  # Random color jittering
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomVerticalFlip(p=0.5),
+        transforms.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0)),
+        transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.3, hue=0.05),
     ])
     return augmentation_transforms
 

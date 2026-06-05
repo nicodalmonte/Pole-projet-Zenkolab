@@ -2,9 +2,9 @@
 
 Usage
 -----
-uv run src/ensemble_eval.py \
-    --dino_ckpt  checkpoints/version_0/dinov3_1_v0-XX-X.ckpt \
-    --eva_ckpt   checkpoints_eva/version_0/eva_vit_v0-XX-X.ckpt \
+uv run src/eval/ensemble_eval.py \
+    --dino_ckpt  checkpoints/dino_large/dino_large_lag_v2-epoch=25-val_auc=0.9941.ckpt \
+    --eva_ckpt   checkpoints/eva/eva_lag_v2-epoch=38-val_auc=0.9924.ckpt \
     --data_dir   data/datasets \
     --image_size 224
 """
@@ -14,7 +14,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
 

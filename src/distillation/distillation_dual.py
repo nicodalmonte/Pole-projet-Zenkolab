@@ -231,54 +231,47 @@ def build_dataloaders(
     num_workers: int,
     student_image_size: int = 224,
     eva_image_size: int = 448,
+    dataset: str = "jraigs",
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
-    # Student transforms: train (with augmentation) and eval (clean)
     student_train_tf, student_eval_tf = build_student_transforms(student_backbone, student_image_size)
-    # EVA eval-only transform at EVA's training resolution
     eva_tf = build_eva_transform(eva_backbone, eva_image_size)
 
-    target_train_size = 8_000
+    if dataset == "lag_origa":
+        lag_raw = LAGDataset(data_dir=data_dir, split="train", transforms=None)
+        train_ds = DualImageDataset(lag_raw, student_train_tf, eva_tf)
+        val_ds = ConcatDataset([LAGDataset(data_dir=data_dir, split="validation", transforms=student_eval_tf)])
+        test_ds = ConcatDataset([ORIGADataset(data_dir=data_dir, transforms=student_eval_tf)])
+    else:  # jraigs (default)
+        target_train_size = 8_000
 
-    # Instantiate JRAIGS without any transform so DualImageDataset can apply both
-    jraigs_raw = JRAIGSDataset(data_dir=data_dir, transforms=None)
-    # Collect glaucoma and non-glaucoma indices for balanced sampling
-    glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_raw.samples) if lbl == 1]
-    non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_raw.samples) if lbl == 0]
+        jraigs_raw = JRAIGSDataset(data_dir=data_dir, transforms=None)
+        glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_raw.samples) if lbl == 1]
+        non_glaucoma_indices = [i for i, (_, lbl) in enumerate(jraigs_raw.samples) if lbl == 0]
 
-    remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
-    if remaining_slots >= len(non_glaucoma_indices):
-        # All non-glaucoma samples fit within the budget
-        selected_non_glaucoma = non_glaucoma_indices
-    else:
-        # Randomly sub-sample non-glaucoma with a fixed seed for reproducibility
-        g = torch.Generator().manual_seed(42)
-        perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
-        selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
+        remaining_slots = max(target_train_size - len(glaucoma_indices), 0)
+        if remaining_slots >= len(non_glaucoma_indices):
+            selected_non_glaucoma = non_glaucoma_indices
+        else:
+            g = torch.Generator().manual_seed(42)
+            perm = torch.randperm(len(non_glaucoma_indices), generator=g)[:remaining_slots].tolist()
+            selected_non_glaucoma = [non_glaucoma_indices[i] for i in perm]
 
-    selected_indices = glaucoma_indices + selected_non_glaucoma
-    # Subset of the raw (no-transform) JRAIGS dataset
-    jraigs_subset = Subset(jraigs_raw, selected_indices)
-    # Wrap with DualImageDataset: each __getitem__ returns image_a and image_b
-    train_ds = DualImageDataset(jraigs_subset, student_train_tf, eva_tf)
+        jraigs_subset = Subset(jraigs_raw, glaucoma_indices + selected_non_glaucoma)
+        train_ds = DualImageDataset(jraigs_subset, student_train_tf, eva_tf)
 
-    # Validation and test use standard single-image format at student resolution
-    val_ds = ConcatDataset([
-        ACRIMADataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
-        ORIGADataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
-        LAGDataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
-    ])
-    # REFUGE2 "train" images are the held-out test set for this benchmark
-    test_ds = ConcatDataset([
-        REFUGE2Dataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
-    ])
+        val_ds = ConcatDataset([
+            ACRIMADataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
+            ORIGADataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
+            LAGDataset(data_dir=data_dir, split="train", transforms=student_eval_tf),
+        ])
+        test_ds = ConcatDataset([REFUGE2Dataset(data_dir=data_dir, split="train", transforms=student_eval_tf)])
 
     print_split_info("TRAIN", train_ds)
     print_split_info("VAL  ", val_ds)
-    print_split_info("TEST (REFUGE2)", test_ds)
+    print_split_info("TEST ", test_ds)
 
     pin = torch.cuda.is_available()
 
-    # Train loader: shuffled, uses dual-image batches
     train_dl = DataLoader(
         train_ds,
         batch_size=batch_size,
@@ -287,7 +280,6 @@ def build_dataloaders(
         pin_memory=pin,
         persistent_workers=num_workers > 0,
     )
-    # Val loader: ordered, standard single-image batches
     val_dl = DataLoader(
         val_ds,
         batch_size=batch_size,
@@ -296,7 +288,6 @@ def build_dataloaders(
         pin_memory=pin,
         persistent_workers=num_workers > 0,
     )
-    # Test loader: ordered, standard single-image batches
     test_dl = DataLoader(
         test_ds,
         batch_size=batch_size,
@@ -308,7 +299,7 @@ def build_dataloaders(
 
     print(f"Train samples : {len(train_ds)}")
     print(f"Val   samples : {len(val_ds)}")
-    print(f"Test  samples : {len(test_ds)} (REFUGE2)")
+    print(f"Test  samples : {len(test_ds)}")
 
     return train_dl, val_dl, test_dl
 
@@ -350,9 +341,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--kd_temperature", type=float, default=4.0, help="Shared KD temperature T.")
 
     # Misc
-    p.add_argument("--checkpoint_dir", default="checkpoints_student_dual")
+    p.add_argument("--checkpoint_dir", default="checkpoints/student_dual")
     p.add_argument("--resume", default=None, help="Path to student checkpoint to resume from.")
     p.add_argument("--devices", default="auto")
+    p.add_argument("--dataset", default="jraigs", choices=["jraigs", "lag_origa"],
+                   help="Dataset config: 'jraigs' (default) or 'lag_origa' (LAG train, ORIGA test).")
     p.add_argument("--precision", default="16-mixed", choices=["32", "16-mixed", "bf16-mixed"])
     p.add_argument(
         "--class_weights",
@@ -400,6 +393,7 @@ def main() -> None:
         num_workers=args.num_workers,
         student_image_size=args.image_size,
         eva_image_size=args.eva_image_size,
+        dataset=args.dataset,
     )
 
     class_weights = (
@@ -441,8 +435,7 @@ def main() -> None:
         ModelCheckpoint(
             dirpath=args.checkpoint_dir,
             # Include both lambdas in the filename for easy identification
-            filename=f"student_dual-lD{args.kd_lambda_dino}-lE{args.kd_lambda_eva}"
-                     "-{epoch:02d}-{val_auc:.4f}",
+            filename="student_dual-{epoch:02d}-{val_auc:.4f}",
             monitor="val_auc",
             mode="max",
             save_top_k=3,
@@ -471,7 +464,7 @@ def main() -> None:
     trainer.fit(student, train_dl, val_dl, ckpt_path=args.resume)
 
     print("\n" + "=" * 60)
-    print("Testing dual-distilled student on REFUGE2 (held-out test set)")
+    print("Testing dual-distilled student on held-out test set")
     print("=" * 60)
     trainer.test(student, test_dl, ckpt_path="best")
 
