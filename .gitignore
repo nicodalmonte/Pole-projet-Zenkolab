@@ -148,3 +148,9 @@ papers/
 *~
 *.swp
 .pytest_cache/
+*command
+logs/
+figures/
+
+# Cluster job scripts
+commands/

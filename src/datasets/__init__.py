@@ -12,6 +12,7 @@ from src.datasets.JRAIGS import JRAIGSDataset
 from src.datasets.G1020 import G1020Dataset
 from src.datasets.RIMONE import RIMONEDataset
 from src.datasets.AIROGSLight import AIROGSLightDataset
+from src.datasets.MultichannelGlaucomaBenchmark import MultichannelGlaucomaBenchmarkDataset
 
 __all__ = [
     "ACRIMADataset",
@@ -24,4 +25,5 @@ __all__ = [
     "G1020Dataset",
     "RIMONEDataset",
     "AIROGSLightDataset",
+    "MultichannelGlaucomaBenchmarkDataset",
 ]

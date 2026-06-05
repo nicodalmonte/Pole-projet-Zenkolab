@@ -1,7 +1,7 @@
 import os
 
 DL_DATASET_DICT = {
-    "ORIGA_Fudus_ACRIMA" : {
+    "ORIGA_ACRIMA_Fundus" : {
         "type" : "cli",
         "required" : ["kaggle"],
         "commands" : [
@@ -84,7 +84,14 @@ DL_DATASET_DICT = {
         "type" : "kagglehub",
         "required" : ["kagglehub"],
         "slug" : "ayaanakhter/harvard-glaucoma-dataset",
-        "subdir" : "processed_data",   # subfolder inside the downloaded version to copy
+        "subdir" : "processed_data",
+    },
+    "MultichannelGlaucoma" : {
+        "type" : "kagglehub_multichannel",
+        "required" : ["kagglehub"],
+        "slug" : "deathtrooper/multichannel-glaucoma-benchmark-dataset",
+        # Duplicates already covered by other Dataset classes:
+        #   ORIGA, G1020, EyePACS-Glaucoma (≈AIRROGS), REFUGE1-train/val (≈REFUGE2)
     },
 }
 
@@ -130,6 +137,22 @@ def install(NAME_LIST = None, reinstall_all = True):
                 run_in_data_dir(command)
         elif cfg.get("type") == "kagglehub":
             install_kagglehub(name, cfg)
+        elif cfg.get("type") == "kagglehub_multichannel":
+            import shutil
+            try:
+                import kagglehub
+            except ImportError:
+                print(f"[{name}] kagglehub not installed. Run: pip install kagglehub")
+                continue
+            print(f"[{name}] Downloading via kagglehub: {cfg['slug']}")
+            dl_path = kagglehub.dataset_download(cfg["slug"])
+            dst = os.path.join(data_dir, name)
+            if os.path.exists(dst):
+                shutil.rmtree(dst)
+            os.makedirs(dst)
+            shutil.copytree(os.path.join(dl_path, "full-fundus", "full-fundus"), os.path.join(dst, "images"))
+            shutil.copy(os.path.join(dl_path, "metadata - standardized.csv"), os.path.join(dst, "metadata.csv"))
+            print(f"[{name}] Installed to {dst}")
 
 if __name__ == '__main__':
     install(["G1020"], reinstall_all = False)
